@@ -20,7 +20,7 @@ bcs = [u(t, 0) ~ 0.0,# for all t > 0
     u(t, 1) ~ 0.0,# for all t > 0
     u(0, x) ~ (sin(π * x) + 0.5 * sin(3 * π * x) + 0.25 * sin(5 * π * x))] #for all  0 < x < 1]
 
-t_max = 0.3
+t_max = 0.25
 x_max = 1.0
 
 # Space and time domains
@@ -28,8 +28,8 @@ domains = [t ∈ Interval(0.0, t_max),
     x ∈ Interval(0.0, x_max)]
 
 # Discretization parameters
-Nx = 50  # Number of spatial grid points
-Nt = 50  # Number of time steps
+Nx = 30  # Number of spatial grid points
+Nt = 30  # Number of time steps
 dx = x_max / (Nx - 1)
 dt = t_max / (Nt - 1)
 
@@ -38,8 +38,9 @@ hidden_size = 16
 
 chain = Chain(Dense(2, hidden_size, Lux.sigmoid_fast),
               Dense(hidden_size, hidden_size, Lux.sigmoid_fast),
-            #   Dense(hidden_size, hidden_size, Lux.tanh_fast),
-            #   Dense(hidden_size, hidden_size, Lux.tanh_fast),
+              Dense(hidden_size, hidden_size, Lux.sigmoid_fast),
+            #   Dense(hidden_size, hidden_size, Lux.sigmoid_fast),
+            #   Dense(hidden_size, hidden_size, Lux.sigmoid_fast),
               Dense(hidden_size, 1))
 
 if use_gpu
@@ -47,9 +48,16 @@ if use_gpu
     ps = ps |> ComponentArray |> Lux.gpu .|> Float64
 end
 
-strategy = GridTraining([dt, dx])
-# strategy = StochasticTraining(10000, 10)
-# strategy = QuasiRandomTraining(200)
+# strategy = GridTraining([dt, dx])
+Nf = Nx * Nt # number of collocation points for pde evalution
+# Nb = Nx + 2 * Nt # number of points for boundary and initial conditions evaluation
+Nb = Nx + 2 * Nt # number of points for boundary and initial conditions evaluation
+# strategy = StochasticTraining(Nf + Nb, bcs_points=Nb)
+# strategy = QuasiRandomTraining(Nf + Nb, bcs_points=Nb)
+# strategy = QuasiRandomTraining(Nf + Nb, bcs_points=Nb, resampling=false, minibatch=1)
+# strategy = QuasiRandomTraining(Nf + Nb)
+strategy = QuasiRandomTraining(Nf + Nb, bcs_points=Nb, sampling_alg=NeuralPDE.SobolSample())
+# strategy = QuasiRandomTraining(Nf + Nb, bcs_points=Nb, sampling_alg=NeuralPDE.SobolSample(), resampling=false, minibatch=1)
 discretization = PhysicsInformedNN(chain, strategy)
 
 @named pde_system = PDESystem(eq, bcs, domains, [t, x], [u(t, x)])
@@ -70,7 +78,7 @@ end
 opt = Optim.BFGS()
 # opt = Adam()
 # opt = Optim.GradientDescent(P=0.01)
-res = @time Optimization.solve(prob, opt; callback=callback, maxiters=1000)
+res = @time Optimization.solve(prob, opt; callback=callback, maxiters=10000)
 phi = discretization.phi
 
 using Plots

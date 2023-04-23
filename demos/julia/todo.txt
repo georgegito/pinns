@@ -4,3 +4,4 @@ try a (x, y, t) problem and investigate gpu performance
 try oscillator problem in julia
 cleanup julia code
 investigate how does differentiation work
+investigate collocation points distribution and grid construction in python
