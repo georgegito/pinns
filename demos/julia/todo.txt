@@ -5,3 +5,4 @@ try oscillator problem in julia
 cleanup julia code
 investigate how does differentiation work
 investigate collocation points distribution and grid construction in python
+float vs double
