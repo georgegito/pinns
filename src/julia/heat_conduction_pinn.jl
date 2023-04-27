@@ -78,6 +78,7 @@ end
 opt = Optim.BFGS()
 # opt = Adam()
 # opt = Optim.GradientDescent(P=0.01)
+# res = @time Optimization.solve(prob, opt; callback=callback, maxiters=10000)
 res = @time Optimization.solve(prob, opt; callback=callback, maxiters=10000)
 phi = discretization.phi
 

@@ -1,0 +1,9 @@
+use initializer in julia
+DONE use bfgs in torch and compare
+try a (x, y, t) problem and investigate gpu performance
+DONE try oscillator problem in julia
+cleanup julia code
+DONE investigate how does differentiation work
+DONE investigate collocation points distribution and grid construction in python
+DONE float vs double 
+plot during training
