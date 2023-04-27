@@ -1,3 +1,5 @@
+# The current file is from julia documentation
+
 using NeuralPDE, Lux, CUDA, Random, ComponentArrays
 using Optimization
 using OptimizationOptimisers

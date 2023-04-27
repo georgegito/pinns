@@ -16,9 +16,9 @@ alpha = 1
 eq = Dt(u(t, x)) ~ alpha * Dxx(u(t, x))
 
 # Initial and boundary conditions
-bcs = [u(t, 0) ~ 0.0,# for all t > 0
-    u(t, 1) ~ 0.0,# for all t > 0
-    u(0, x) ~ (sin(π * x) + 0.5 * sin(3 * π * x) + 0.25 * sin(5 * π * x))] #for all  0 < x < 1]
+bcs = [u(t, 0) ~ 0.0, # for all t > 0
+    u(t, 1) ~ 0.0, # for all t > 0
+    u(0, x) ~ (sin(π * x) + 0.5 * sin(3 * π * x) + 0.25 * sin(5 * π * x))] #for all  0 < x < 1
 
 t_max = 0.25
 x_max = 1.0
@@ -101,14 +101,9 @@ u_real = reshape([analytic_sol_func(t, x, alpha) for t in ts for x in xs],
                  (length(xs), length(ts)))
 
 diff_u = abs.(u_predict .- u_real)
-# p1 = plot(ts, xs, u_real, linetype = :contourf, title = "analytic");
-# p2 = plot(ts, xs, u_predict, linetype = :contourf, title = "predict");
-# p3 = plot(ts, xs, diff_u, linetype = :contourf, title = "error");
 
 p1 = contour(xs, ts, u_real', xlabel="x", ylabel="t", title="Temperature Distribution - analytic", color=:turbo, levels=15, fill=true, lw=0)
 p2 = contour(xs, ts, u_predict', xlabel="x", ylabel="t", title="Temperature Distribution - predict", color=:turbo, levels=15, fill=true, lw=0)
 p3 = contour(xs, ts, diff_u', xlabel="x", ylabel="t", title="Error", color=:turbo, levels=15, fill=true, lw=0)
 
 plot(p1, p2, p3, layout=(3, 1), size=(1000, 1500))
-# display(p1)
-
