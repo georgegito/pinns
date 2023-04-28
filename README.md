@@ -1,7 +1,9 @@
 # Physics Informed Neural Networks - Thesis
 
-Consider using Zotero for citations.
+### TODO:
 
-Let's consider real world applications, not abstract math problems.
+- Consider using Zotero for citations.
 
-Replace this README with a more meaningful content.
+- Let's consider real world applications, not abstract math problems.
+
+- Replace this README with a more meaningful content.
