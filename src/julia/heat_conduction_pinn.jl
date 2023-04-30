@@ -12,8 +12,8 @@ Dtt = Differential(t)^2
 Dt = Differential(t)
 
 #PDE
-alpha = 1
-eq = Dt(u(t, x)) ~ alpha * Dxx(u(t, x))
+α = 1
+eq = Dt(u(t, x)) ~ α * Dxx(u(t, x))
 
 # Initial and boundary conditions
 bcs = [u(t, 0) ~ 0.0, # for all t > 0
@@ -79,7 +79,7 @@ opt = Optim.BFGS()
 # opt = Adam()
 # opt = Optim.GradientDescent(P=0.01)
 # res = @time Optimization.solve(prob, opt; callback=callback, maxiters=10000)
-res = @time Optimization.solve(prob, opt; callback=callback, maxiters=10000)
+res = @time Optimization.solve(prob, opt; callback=callback, maxiters=1000)
 phi = discretization.phi
 
 using Plots
@@ -87,17 +87,17 @@ using Plots
 ts = [infimum(d.domain):0.1*dt:supremum(d.domain) for d in domains][1]
 xs = [infimum(d.domain):0.1*dx:supremum(d.domain) for d in domains][2]
 
-function analytic_sol_func(t, x, alpha)
-    term1 = sin(π * x) * exp(-(π * alpha)^2 * t)
-    term2 = 0.5 * sin(3 * π * x) * exp(-(9 * π * alpha)^2 * t)
-    term3 = 0.25 * sin(5 * π * x) * exp(-(25 * π * alpha)^2 * t)
+function analytic_sol_func(t, x, α)
+    term1 = sin(π * x) * exp(-α * π^2 * t)
+    term2 = 0.5 * sin(3 * π * x) * exp(-9 * α * π^2 * t)
+    term3 = 0.25 * sin(5 * π * x) * exp(-25 * α * π^2 * t)
 
     T = term1 + term2 + term3
 end
 
 u_predict = reshape([first(phi([t, x], res.u)) for t in ts for x in xs],
                     (length(xs), length(ts)))
-u_real = reshape([analytic_sol_func(t, x, alpha) for t in ts for x in xs],
+u_real = reshape([analytic_sol_func(t, x, α) for t in ts for x in xs],
                  (length(xs), length(ts)))
 
 diff_u = abs.(u_predict .- u_real)
