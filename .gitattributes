@@ -1,2 +1,1 @@
-*.ipynb linguist-language=Jupyter Notebook
-*.jl linguist-language=Julia
+*.html linguist-language=Julia
