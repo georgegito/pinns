@@ -47,11 +47,11 @@ md"""
 # ╔═╡ e9e2e896-59ae-439f-9c40-1f3f726b0f68
 begin
 	filename = "/Users/ggito/repos/pinns/src/julia/f1_front_wing/front_wing.csv"
-	u_df = CSV.File(filename)
+	p_df = CSV.File(filename)
 end
 
 # ╔═╡ 19f6d925-c411-40c1-b1db-4f88ce47fa8b
-total_points = nrow(u_df)
+total_points = nrow(p_df)
 
 # ╔═╡ 969b87b0-077c-4320-8cef-46e75275e351
 md"""
@@ -76,20 +76,20 @@ indices = sample(1:total_points, num_of_samples, replace=false)
 
 # ╔═╡ f2b9500e-e705-4701-a4f2-c5cef02d6b94
 begin 
-	u_sampled_df = DataFrame(x=u_df.x[indices], y=u_df.y[indices], z=u_df.z[indices])
+	p_sampled_df = DataFrame(x=p_df.x[indices], y=p_df.y[indices], z=p_df.z[indices])
 end
 
 # ╔═╡ 93b6f8a9-ff86-4607-aa20-b990d75f90a6
 begin
-	min = minimum(minimum.(eachcol(u_sampled_df)))
-	max = maximum(maximum.(eachcol(u_sampled_df)))
+	min = minimum(minimum.(eachcol(p_sampled_df)))
+	max = maximum(maximum.(eachcol(p_sampled_df)))
 	range = (min, max)
 end
 
 # ╔═╡ b794b7c6-5032-406d-8802-a3f2c03f95f9
 begin
 	plotly()
-	scatter3d(u_sampled_df.x, u_sampled_df.y, u_sampled_df.z, markersize=0.5, color=:purple, xlims=range, ylims=range, zlims=range)
+	scatter3d(p_sampled_df.x, p_sampled_df.y, p_sampled_df.z, markersize=0.5, color=:purple, xlims=range, ylims=range, zlims=range)
 end
 
 # ╔═╡ 102ec4f6-f8eb-4616-a4e4-980c1b4295e9
@@ -101,18 +101,18 @@ md"""
 """
 
 # ╔═╡ dc70e7e4-9201-4c23-9291-f4b85a3f4bba
-u_mat = [u_sampled_df.x u_sampled_df.y u_sampled_df.z]
+p_mat = [p_sampled_df.x p_sampled_df.y p_sampled_df.z]
 
 # ╔═╡ 315571f9-1c9d-41ed-9cad-07295beaa4e7
-Tu = fit(UnitRangeTransform, u_mat, dims=1);
+Tp = fit(UnitRangeTransform, p_mat, dims=1);
 
 # ╔═╡ 8847a140-d571-4d15-a9c3-4c3af44aa349
-u_norm_mat = StatsBase.transform(Tu, u_mat)
+p_norm_mat = StatsBase.transform(Tp, p_mat)
 
 # ╔═╡ 3a6b1bab-d926-41b7-8220-b5c419f80f86
 begin
 	plotly()
-	scatter3d(u_norm_mat[:, 1], u_norm_mat[:, 2], u_norm_mat[:, 3], markersize=0.5, color=:purple, xlims=[0, 1], ylims=[0, 1], zlims=[0, 1])
+	scatter3d(p_norm_mat[:, 1], p_norm_mat[:, 2], p_norm_mat[:, 3], markersize=0.5, color=:purple, xlims=[0, 1], ylims=[0, 1], zlims=[0, 1])
 end
 
 # ╔═╡ f6096ac0-591b-4596-b977-011edd96bb05
@@ -127,12 +127,12 @@ md"""
 scaler = Scale(1, 2, 3, low=0, high=1)
 
 # ╔═╡ 231319fe-660e-4562-83e7-2722ddf1ab41
-u_scaled_df = scaler(u_sampled_df)
+p_scaled_df = scaler(p_sampled_df)
 
 # ╔═╡ 98e443c3-1447-4a14-8730-3f0b7d510371
 begin
 	plotly()
-	scatter3d(u_scaled_df.x, u_scaled_df.y, u_scaled_df.z, markersize=0.5, color=:purple, xlims=[0, 1], ylims=[0, 1], zlims=[0, 1])
+	scatter3d(p_scaled_df.x, p_scaled_df.y, p_scaled_df.z, markersize=0.5, color=:purple, xlims=[0, 1], ylims=[0, 1], zlims=[0, 1])
 end
 
 # ╔═╡ ad3b8955-6359-4a89-96e3-2798661559c2
@@ -144,16 +144,16 @@ md"""
 """
 
 # ╔═╡ 2c2c35df-bddd-4397-b737-aae04965b93a
-u_tr_df = DataFrame(
-					x=u_sampled_df.x .- minimum(u_sampled_df.x), 
-					y=u_sampled_df.y .- minimum(u_sampled_df.y),
-					z=u_sampled_df.z .- minimum(u_sampled_df.x)
+p_tr_df = DataFrame(
+					x=p_sampled_df.x .- minimum(p_sampled_df.x), 
+					y=p_sampled_df.y .- minimum(p_sampled_df.y),
+					z=p_sampled_df.z .- minimum(p_sampled_df.x)
 )
 
 # ╔═╡ ce400c75-733f-4218-a781-cef75c9ca283
 begin
 	plotly()
-	scatter3d(u_tr_df.x, u_tr_df.y, u_tr_df.z, markersize=0.5, color=:purple, xlims=[0, 200], ylims=[0, 200], zlims=[0, 200])
+	scatter3d(p_tr_df.x, p_tr_df.y, p_tr_df.z, markersize=0.5, color=:purple, xlims=[0, 200], ylims=[0, 200], zlims=[0, 200])
 end
 
 # ╔═╡ 1e383909-0ba3-447b-8ec9-cbd4863b8b3c
@@ -165,22 +165,22 @@ md"""
 """
 
 # ╔═╡ 46869e63-d801-4705-88cc-7f9f151056a9
-tr_max = maximum(maximum.(eachcol(u_sampled_df[!, 1:3])))
+tr_max = maximum(maximum.(eachcol(p_sampled_df[!, 1:3])))
 
 # ╔═╡ e0798d04-935d-47b9-9c55-104a7d5c7abf
-u_unif_scaled_df = u_tr_df ./ tr_max
+p_unif_scaled_df = p_tr_df ./ tr_max
 
 # ╔═╡ 3ee4c126-0e26-4fb1-b38e-c1dbcb3715f2
 begin
-	unif_scaled_min = minimum(minimum.(eachcol(u_unif_scaled_df)))
-	unif_scaled_max = maximum(maximum.(eachcol(u_unif_scaled_df)))
+	unif_scaled_min = minimum(minimum.(eachcol(p_unif_scaled_df)))
+	unif_scaled_max = maximum(maximum.(eachcol(p_unif_scaled_df)))
 	unif_scaled_range = (unif_scaled_min, unif_scaled_max)
 	plotly()
-	scatter3d(u_unif_scaled_df.x, u_unif_scaled_df.y, u_unif_scaled_df.z, markersize=0.5, color=:purple, xlims=unif_scaled_range, ylims=unif_scaled_range, zlims=unif_scaled_range)	
+	scatter3d(p_unif_scaled_df.x, p_unif_scaled_df.y, p_unif_scaled_df.z, markersize=0.5, color=:purple, xlims=unif_scaled_range, ylims=unif_scaled_range, zlims=unif_scaled_range)	
 end
 
 # ╔═╡ 399a8028-0dfe-43a2-a767-aaced4bfae0f
-describe(u_unif_scaled_df)
+describe(p_unif_scaled_df)
 
 # ╔═╡ e00f7880-237f-4184-8f88-c809de50addf
 md"""
@@ -235,22 +235,53 @@ momentum_eq_z = Dt(w_func)  + u_func*Dx(w_func) + v_func*Dy(w_func) + w_func*Dz(
 # ╔═╡ f5eee4a6-4ff8-4aec-be84-d8806494757e
 pdes = [continuity_eq, momentum_eq_x, momentum_eq_y, momentum_eq_z]
 
+# ╔═╡ 392957c6-b89f-491d-aac3-b70822c628f6
+begin
+	nb = 10000
+	@bind nb html"<input type=range min=1000 max=200000 step=10000 value=10000>"
+end
+
 # ╔═╡ fcd6b10d-0d92-44df-84f0-b42ba0341dd2
-bcs = [] # TODO
+# bcs = [] # TODO
+
+	
+# # Initial and boundary conditions
+# bcs = [u(t, 0) ~ 0.0, # for all t > 0
+# 	u(t, 1) ~ 0.0, # for all t > 0
+# 	u(0, x) ~ (sin(π * x) + 0.5 * sin(3 * π * x) + 0.25 * sin(5 * π * x))] #for all  0 < x < 1
+
+# ╔═╡ 4f42a93f-ec78-44b8-a9d6-bced46c9aaf7
+u(t, [0, 1], [0, 1], [0, 1])
+
+# ╔═╡ 7f37ba7e-92b3-4a59-a61c-c1c4f1662e0b
+boundary_points = p_unif_scaled_df
+
+# ╔═╡ eef99ab0-90b9-4bd5-bd93-c881b442ce7d
+begin
+	# Initial and boundary conditions
+	bcs = [u(t, boundary_points.x, boundary_points.y, boundary_points.z) ~ 0.0, 
+		# u(t, 1) ~ 0.0, # for all t > 0
+		# u(0, x) ~ (sin(π * x) + 0.5 * sin(3 * π * x) + 0.25 * sin(5 * π * x))
+	] #for all  0 < x < 1
+end;
 
 # ╔═╡ 2348d504-d13e-42df-a532-053ca43ba619
 begin
+	t_min = 0
 	t_max = 0.25
-	x_max = 1.0
-	y_max = 1.0
-	z_max = 1.0
+	x_min = unif_scaled_min
+	x_max = unif_scaled_max
+	y_min = unif_scaled_min
+	y_max = unif_scaled_max
+	z_min = unif_scaled_min
+	z_max = unif_scaled_max
 	
 	# Space and time domains
 	domains = 
-		[t ∈ Interval(0.0, t_max),
-		 x ∈ Interval(0.0, x_max),
-		 y ∈ Interval(0.0, y_max),
-		 z ∈ Interval(0.0, z_max)]
+		[t ∈ Interval(t_min, t_max),
+		 x ∈ Interval(x_min, x_max),
+		 y ∈ Interval(y_min, y_max),
+		 z ∈ Interval(z_min, z_max)]
 end
 
 # ╔═╡ c15f8302-ebc4-436d-9064-e0c1b0ae34cf
@@ -3533,7 +3564,7 @@ version = "1.4.1+1"
 # ╟─6198a739-acda-4799-ae3b-038c7a7ada47
 # ╟─5abc6ab1-bc48-43e4-8dc8-cfede46aeb7b
 # ╟─80cee14e-5867-403a-8daa-9c68f5eb4b5b
-# ╟─e9e2e896-59ae-439f-9c40-1f3f726b0f68
+# ╠═e9e2e896-59ae-439f-9c40-1f3f726b0f68
 # ╠═19f6d925-c411-40c1-b1db-4f88ce47fa8b
 # ╟─969b87b0-077c-4320-8cef-46e75275e351
 # ╠═47570ed6-913b-4bc7-a7d7-7087492f30dd
@@ -3543,22 +3574,22 @@ version = "1.4.1+1"
 # ╠═93b6f8a9-ff86-4607-aa20-b990d75f90a6
 # ╟─b794b7c6-5032-406d-8802-a3f2c03f95f9
 # ╟─102ec4f6-f8eb-4616-a4e4-980c1b4295e9
-# ╟─dc70e7e4-9201-4c23-9291-f4b85a3f4bba
+# ╠═dc70e7e4-9201-4c23-9291-f4b85a3f4bba
 # ╟─315571f9-1c9d-41ed-9cad-07295beaa4e7
-# ╟─8847a140-d571-4d15-a9c3-4c3af44aa349
+# ╠═8847a140-d571-4d15-a9c3-4c3af44aa349
 # ╟─3a6b1bab-d926-41b7-8220-b5c419f80f86
 # ╟─f6096ac0-591b-4596-b977-011edd96bb05
 # ╠═4e449393-e2bf-407a-aab7-34ca4cdcc0fe
-# ╟─231319fe-660e-4562-83e7-2722ddf1ab41
+# ╠═231319fe-660e-4562-83e7-2722ddf1ab41
 # ╠═98e443c3-1447-4a14-8730-3f0b7d510371
 # ╟─ad3b8955-6359-4a89-96e3-2798661559c2
-# ╟─2c2c35df-bddd-4397-b737-aae04965b93a
+# ╠═2c2c35df-bddd-4397-b737-aae04965b93a
 # ╠═ce400c75-733f-4218-a781-cef75c9ca283
 # ╟─1e383909-0ba3-447b-8ec9-cbd4863b8b3c
 # ╟─46869e63-d801-4705-88cc-7f9f151056a9
-# ╟─e0798d04-935d-47b9-9c55-104a7d5c7abf
+# ╠═e0798d04-935d-47b9-9c55-104a7d5c7abf
 # ╠═3ee4c126-0e26-4fb1-b38e-c1dbcb3715f2
-# ╟─399a8028-0dfe-43a2-a767-aaced4bfae0f
+# ╠═399a8028-0dfe-43a2-a767-aaced4bfae0f
 # ╟─e00f7880-237f-4184-8f88-c809de50addf
 # ╠═ff792177-777e-4812-b6c6-5235946accfe
 # ╠═8e8daf23-e5be-438e-99c8-eeb7a163af60
@@ -3568,7 +3599,11 @@ version = "1.4.1+1"
 # ╠═34b6458f-a3a2-4a46-9c72-25302b8f2b84
 # ╠═fedc95c3-0215-4b42-a582-ee133f343475
 # ╠═f5eee4a6-4ff8-4aec-be84-d8806494757e
+# ╠═392957c6-b89f-491d-aac3-b70822c628f6
 # ╠═fcd6b10d-0d92-44df-84f0-b42ba0341dd2
+# ╠═4f42a93f-ec78-44b8-a9d6-bced46c9aaf7
+# ╠═7f37ba7e-92b3-4a59-a61c-c1c4f1662e0b
+# ╠═eef99ab0-90b9-4bd5-bd93-c881b442ce7d
 # ╠═2348d504-d13e-42df-a532-053ca43ba619
 # ╟─c15f8302-ebc4-436d-9064-e0c1b0ae34cf
 # ╟─00000000-0000-0000-0000-000000000001
