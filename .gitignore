@@ -6,3 +6,4 @@
 *ignore*
 *.csv
 *tips.jl
+.DS_Store

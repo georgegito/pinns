@@ -46,8 +46,8 @@ md"""
 
 # ╔═╡ e9e2e896-59ae-439f-9c40-1f3f726b0f68
 begin
-	filename = "/Users/ggito/repos/pinns/src/julia/f1_front_wing/front_wing.csv"
-	p_df = CSV.File(filename)
+	filepath = "/Users/ggito/repos/pinns/src/julia/f1_front_wing/front_wing.csv"
+	p_df = CSV.File(filepath)
 end
 
 # ╔═╡ 19f6d925-c411-40c1-b1db-4f88ce47fa8b
@@ -182,107 +182,13 @@ end
 # ╔═╡ 399a8028-0dfe-43a2-a767-aaced4bfae0f
 describe(p_unif_scaled_df)
 
-# ╔═╡ e00f7880-237f-4184-8f88-c809de50addf
-md"""
-###
-###
-###
-### Partial Differential Equations
-"""
+# ╔═╡ 4e28f14c-0117-478a-a87c-ef9077e37f9d
+# begin
+# 	out_filepath = "/Users/ggito/repos/pinns/src/julia/f1_front_wing/front_wing_final.csv"
+# 	CSV.write(out_filepath, p_unif_scaled_df)
+# end
 
-# ╔═╡ ff792177-777e-4812-b6c6-5235946accfe
-begin
-	@parameters t, x, y, z
-	@variables u(..), v(..), w(..), p(..)
-	Dt = Differential(t)
-	Dx = Differential(x)
-	Dy = Differential(y)
-	Dz = Differential(z)
-	Dxx = Dx^2
-	Dyy = Dy^2
-	Dzz = Dz^2
-end;
-
-# ╔═╡ 8e8daf23-e5be-438e-99c8-eeb7a163af60
-begin
-	ρ = 1
-	ν = 1
-	fx = 0
-	fy = 0
-	fz = 0
-end;
-
-# ╔═╡ 2ac2babd-77fd-4809-ad97-76c234334687
-begin
-	u_func = u(t, x, y, z)
-	v_func = v(t, x, y, z)
-	w_func = w(t, x, y, z)
-	p_func = p(t, x, y,z)
-end
-
-# ╔═╡ 7447b5c1-ad4b-4771-8871-1e0c3d7d83a5
-continuity_eq = Dx(u_func) + Dy(v_func) + Dz(w_func) ~ 0
-
-# ╔═╡ be98f518-f6e8-4f8e-8a84-aa57b0964ca1
-momentum_eq_x = Dt(u_func)  + u_func*Dx(u_func) + v_func*Dy(u_func) + w_func*Dz(u_func) ~ -1/ρ*Dx(p_func) + ν*(Dxx(u_func) + Dyy(u_func) + Dzz(u_func)) + fx
-
-# ╔═╡ 34b6458f-a3a2-4a46-9c72-25302b8f2b84
-momentum_eq_y = Dt(v_func)  + u_func*Dx(v_func) + v_func*Dy(v_func) + w_func*Dz(v_func) ~ -1/ρ*Dy(p_func) + ν*(Dxx(v_func) + Dyy(v_func) + Dzz(v_func)) + fy
-
-# ╔═╡ fedc95c3-0215-4b42-a582-ee133f343475
-momentum_eq_z = Dt(w_func)  + u_func*Dx(w_func) + v_func*Dy(w_func) + w_func*Dz(w_func) ~ -1/ρ*Dz(p_func) + ν*(Dxx(w_func) + Dyy(w_func) + Dzz(w_func)) + fz
-
-# ╔═╡ f5eee4a6-4ff8-4aec-be84-d8806494757e
-pdes = [continuity_eq, momentum_eq_x, momentum_eq_y, momentum_eq_z]
-
-# ╔═╡ 392957c6-b89f-491d-aac3-b70822c628f6
-begin
-	nb = 10000
-	@bind nb html"<input type=range min=1000 max=200000 step=10000 value=10000>"
-end
-
-# ╔═╡ fcd6b10d-0d92-44df-84f0-b42ba0341dd2
-# bcs = [] # TODO
-
-	
-# # Initial and boundary conditions
-# bcs = [u(t, 0) ~ 0.0, # for all t > 0
-# 	u(t, 1) ~ 0.0, # for all t > 0
-# 	u(0, x) ~ (sin(π * x) + 0.5 * sin(3 * π * x) + 0.25 * sin(5 * π * x))] #for all  0 < x < 1
-
-# ╔═╡ 4f42a93f-ec78-44b8-a9d6-bced46c9aaf7
-u(t, [0, 1], [0, 1], [0, 1])
-
-# ╔═╡ 7f37ba7e-92b3-4a59-a61c-c1c4f1662e0b
-boundary_points = p_unif_scaled_df
-
-# ╔═╡ eef99ab0-90b9-4bd5-bd93-c881b442ce7d
-begin
-	# Initial and boundary conditions
-	bcs = [u(t, boundary_points.x, boundary_points.y, boundary_points.z) ~ 0.0, 
-		# u(t, 1) ~ 0.0, # for all t > 0
-		# u(0, x) ~ (sin(π * x) + 0.5 * sin(3 * π * x) + 0.25 * sin(5 * π * x))
-	] #for all  0 < x < 1
-end;
-
-# ╔═╡ 2348d504-d13e-42df-a532-053ca43ba619
-begin
-	t_min = 0
-	t_max = 0.25
-	x_min = unif_scaled_min
-	x_max = unif_scaled_max
-	y_min = unif_scaled_min
-	y_max = unif_scaled_max
-	z_min = unif_scaled_min
-	z_max = unif_scaled_max
-	
-	# Space and time domains
-	domains = 
-		[t ∈ Interval(t_min, t_max),
-		 x ∈ Interval(x_min, x_max),
-		 y ∈ Interval(y_min, y_max),
-		 z ∈ Interval(z_min, z_max)]
-end
+DownloadButton(p_unif_scaled_df, "front_wing_final.csv")
 
 # ╔═╡ c15f8302-ebc4-436d-9064-e0c1b0ae34cf
 # begin
@@ -3560,7 +3466,7 @@ version = "1.4.1+1"
 """
 
 # ╔═╡ Cell order:
-# ╟─2f55d300-5d73-11ee-32fd-0dd20cf3257d
+# ╠═2f55d300-5d73-11ee-32fd-0dd20cf3257d
 # ╟─6198a739-acda-4799-ae3b-038c7a7ada47
 # ╟─5abc6ab1-bc48-43e4-8dc8-cfede46aeb7b
 # ╟─80cee14e-5867-403a-8daa-9c68f5eb4b5b
@@ -3590,21 +3496,7 @@ version = "1.4.1+1"
 # ╠═e0798d04-935d-47b9-9c55-104a7d5c7abf
 # ╠═3ee4c126-0e26-4fb1-b38e-c1dbcb3715f2
 # ╠═399a8028-0dfe-43a2-a767-aaced4bfae0f
-# ╟─e00f7880-237f-4184-8f88-c809de50addf
-# ╠═ff792177-777e-4812-b6c6-5235946accfe
-# ╠═8e8daf23-e5be-438e-99c8-eeb7a163af60
-# ╠═2ac2babd-77fd-4809-ad97-76c234334687
-# ╠═7447b5c1-ad4b-4771-8871-1e0c3d7d83a5
-# ╠═be98f518-f6e8-4f8e-8a84-aa57b0964ca1
-# ╠═34b6458f-a3a2-4a46-9c72-25302b8f2b84
-# ╠═fedc95c3-0215-4b42-a582-ee133f343475
-# ╠═f5eee4a6-4ff8-4aec-be84-d8806494757e
-# ╠═392957c6-b89f-491d-aac3-b70822c628f6
-# ╠═fcd6b10d-0d92-44df-84f0-b42ba0341dd2
-# ╠═4f42a93f-ec78-44b8-a9d6-bced46c9aaf7
-# ╠═7f37ba7e-92b3-4a59-a61c-c1c4f1662e0b
-# ╠═eef99ab0-90b9-4bd5-bd93-c881b442ce7d
-# ╠═2348d504-d13e-42df-a532-053ca43ba619
+# ╠═4e28f14c-0117-478a-a87c-ef9077e37f9d
 # ╟─c15f8302-ebc4-436d-9064-e0c1b0ae34cf
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
