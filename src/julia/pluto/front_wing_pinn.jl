@@ -26,6 +26,20 @@ begin
 		import ModelingToolkit: Interval
 end
 
+# ╔═╡ 16577119-39dd-4031-9494-1f4aa93a61fe
+md"""
+# Physics Informed Neural Networks $br F1 Car Front Wing Aerodymanics
+## Physics Informed Neural Network
+"""
+
+# ╔═╡ a229be42-fee3-46ab-b90b-13c226b1d719
+md"""
+###
+###
+###
+### Load & Display Model
+"""
+
 # ╔═╡ 4e795395-e2e0-4c90-8707-68a0d0b55b58
 begin
 	filepath = "/Users/ggito/repos/pinns/src/julia/f1_front_wing/front_wing_final.csv"
@@ -107,6 +121,9 @@ momentum_eq_y = Dt(v_func)  + u_func*Dx(v_func) + v_func*Dy(v_func) + w_func*Dz(
 # ╔═╡ 2f7ee4e8-45df-49d9-bf82-e3a990666e36
 momentum_eq_z = Dt(w_func)  + u_func*Dx(w_func) + v_func*Dy(w_func) + w_func*Dz(w_func) ~ -1/ρ*Dz(p_func) + ν*(Dxx(w_func) + Dyy(w_func) + Dzz(w_func)) + fz
 
+# ╔═╡ d1ed8ee1-dc49-4065-aa01-d881b3e24a6c
+# TODO: poisson equation
+
 # ╔═╡ 1c718ba7-a6f8-428f-a1fe-c912361f4624
 pdes = [continuity_eq, momentum_eq_x, momentum_eq_y, momentum_eq_z]
 
@@ -118,23 +135,26 @@ end
 
 # ╔═╡ c022739f-db5a-4d7c-ac72-69c6caf0ffd6
 begin
-	# Initial and boundary conditions
+	# Initial and boundary conditions # TODO
 	boundary_conditions = 
-		[u(t, x_wing, y_wing, z_wing) ~ 0.0, 
+		(u(t, x_wing, y_wing, z_wing) ~ 0.0, 
 		# u(t, 1) ~ 0.0, # for all t > 0
 		# u(0, x) ~ (sin(π * x) + 0.5 * sin(3 * π * x) + 0.25 * sin(5 * π * x))
-	] #for all  0 < x < 1
+		) #for all  0 < x < 1
 end;
+
+# ╔═╡ c91ba709-b2f0-446a-b836-bb9f4343d059
+# TODO: add real data as training points from cfd simulation
 
 # ╔═╡ df6a54c1-8525-4373-8164-8d4bc13284cc
 begin
 	t_min = 0
 	t_max = 0.25
 
-	t_range = [t_min, t_max]
-	x_range = [x_min, x_max]
-	y_range = [y_min, y_max]
-	z_range = [z_min, z_max]
+	t_range = (t_min, t_max)
+	x_range = (x_min, x_max)
+	y_range = (y_min, y_max)
+	z_range = (z_min, z_max)
 	
 	# Space and time domains
 	domains = 
@@ -144,31 +164,57 @@ begin
 		 z ∈ Interval(z_min, z_max)]
 end
 
+# ╔═╡ 1ca22196-dfe7-4728-843e-fc53679763cb
+md"""
+###
+###
+###
+### Domain Discretization
+"""
+
 # ╔═╡ 1b4f8e1d-b0a7-4291-bf10-aae64c19b898
 begin
 	# Discretization parameters
 	Nt = 300  # Number of time steps
-	Nx = 300  # Number of spatial grid points x
-	Ny = 300  # Number of spatial grid points y
-	Nz = 300  # Number of spatial grid points
+	# Nx = 30    # Number of spatial grid points x
+	# Ny = 30    # Number of spatial grid points y
+	# Nz = 30    # Number of spatial grid points z
+
+	outline_factor = 1.5
 	
 	dt = t_max / (Nt - 1)
-	dx = x_max / (Nx - 1)
-	dy = y_max / (Ny - 1)
-	dz = z_max / (Nz - 1)
+	# dx = x_max * outline_factor / (Nx - 1)
+	# dy = y_max * outline_factor / (Ny - 1)
+	# dz = z_max * outline_factor / (Nz - 1) # TODO: investigate precision error
+	# # dz = 0.000293 # for Nz = 300
+
+	dx = 0.02
+	dy = 0.02
+	dz = 0.02
 end;
 
 # ╔═╡ 7730633a-fed4-4261-ac4b-5492cd6fcd13
 begin
-	x_s = [x_min:dx:x_max]
-	y_s = [y_min:dy:y_max]
-	z_s = [z_min:dz:z_max]
-end;
+	x_s = x_min:dx:(x_max * outline_factor)
+	y_s = y_min:dy:(y_max * outline_factor)
+	z_s = z_min:dz:(z_max * outline_factor)
+end
 
-# ╔═╡ 8aeecbb7-4e6c-4900-8020-7afa5ce0eb52
-# grid = [x, y, z for x in x_s, y in y_s, z in z_s]
-# println([("i: $i, j: $j") for i in 1:3, j in 1:2])
+# ╔═╡ 6e3e90f2-c459-44ae-9111-7edf4da37cfe
 grid = [(x, y, z) for x in x_s, y in y_s, z in z_s]
+
+# ╔═╡ f1dce198-bc7d-409c-a3a1-bfeba8dc036c
+num_of_grid_points = size(grid)[1] * size(grid)[2] * size(grid)[3]
+
+# ╔═╡ cae8dfee-4daa-4de7-bc3b-43df52aea4bf
+grid_flat = reshape(grid, num_of_grid_points)
+
+# ╔═╡ ea694bd8-fdac-4b29-9e43-a37a97ae7690
+begin
+	plotly()
+	scatter3d(x_wing, y_wing, z_wing, markersize=0.5, color=:purple, xlims=range, ylims=range, zlims=range)
+	scatter3d!(grid_flat, markersize=0.5, color=:yellow, xlims=range, ylims=range, zlims=range, markeropacity=0.8)
+end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -3377,6 +3423,8 @@ version = "1.4.1+1"
 
 # ╔═╡ Cell order:
 # ╠═8f92e39c-912f-11ee-1a56-afaa3ba2968c
+# ╟─16577119-39dd-4031-9494-1f4aa93a61fe
+# ╟─a229be42-fee3-46ab-b90b-13c226b1d719
 # ╠═4e795395-e2e0-4c90-8707-68a0d0b55b58
 # ╠═53c46c96-8696-4e5d-9f0c-53bf3fde3536
 # ╠═95a61d4e-dc1a-4088-b823-c75ca5c67134
@@ -3391,12 +3439,18 @@ version = "1.4.1+1"
 # ╠═766974ae-d4ce-4823-9393-0cb5a6f4d84e
 # ╠═87c62b31-08d1-484e-975c-2ce69a00b418
 # ╠═2f7ee4e8-45df-49d9-bf82-e3a990666e36
+# ╠═d1ed8ee1-dc49-4065-aa01-d881b3e24a6c
 # ╠═1c718ba7-a6f8-428f-a1fe-c912361f4624
 # ╠═f876da2e-96f9-45d3-8688-52861d641bf9
 # ╠═c022739f-db5a-4d7c-ac72-69c6caf0ffd6
+# ╠═c91ba709-b2f0-446a-b836-bb9f4343d059
 # ╠═df6a54c1-8525-4373-8164-8d4bc13284cc
+# ╟─1ca22196-dfe7-4728-843e-fc53679763cb
 # ╠═1b4f8e1d-b0a7-4291-bf10-aae64c19b898
 # ╠═7730633a-fed4-4261-ac4b-5492cd6fcd13
-# ╠═8aeecbb7-4e6c-4900-8020-7afa5ce0eb52
+# ╠═6e3e90f2-c459-44ae-9111-7edf4da37cfe
+# ╠═f1dce198-bc7d-409c-a3a1-bfeba8dc036c
+# ╠═cae8dfee-4daa-4de7-bc3b-43df52aea4bf
+# ╠═ea694bd8-fdac-4b29-9e43-a37a97ae7690
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

@@ -30,6 +30,7 @@ end
 # ╔═╡ 6198a739-acda-4799-ae3b-038c7a7ada47
 md"""
 # Physics Informed Neural Networks $br F1 Car Front Wing Aerodymanics
+## Data Preprocessing
 """
 
 # ╔═╡ 5abc6ab1-bc48-43e4-8dc8-cfede46aeb7b
