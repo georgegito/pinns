@@ -42,8 +42,14 @@ md"""
 
 # ╔═╡ 4e795395-e2e0-4c90-8707-68a0d0b55b58
 begin
-	filepath = "/Users/ggito/repos/pinns/src/julia/f1_front_wing/front_wing_final.csv"
-	wing_df = DataFrame(CSV.File(filepath))
+	points_filepath = "/Users/ggito/repos/pinns/src/julia/f1_front_wing/front_wing_points_final.csv"
+	wing_df = DataFrame(CSV.File(points_filepath))
+end
+
+# ╔═╡ 7908b537-d671-43f7-8cd5-2f7f98471ca6
+begin
+	norms_filepath = "/Users/ggito/repos/pinns/src/julia/f1_front_wing/front_wing_norms_final.csv"
+	norms_df = DataFrame(CSV.File(norms_filepath))
 end
 
 # ╔═╡ 53c46c96-8696-4e5d-9f0c-53bf3fde3536
@@ -51,6 +57,9 @@ total_points = nrow(wing_df)
 
 # ╔═╡ 95a61d4e-dc1a-4088-b823-c75ca5c67134
 x_wing, y_wing, z_wing = wing_df.x, wing_df.y, wing_df.z
+
+# ╔═╡ d4f91560-41ba-4a59-bb66-979824fd59e3
+n_x , n_y, n_z = norms_df.x ./ 100, norms_df.y ./ 100, norms_df.z ./ 100 # divide normal vectors by 100 for display purposes
 
 # ╔═╡ 42a33248-5e9b-410c-99a8-95b0d6c1abaf
 begin
@@ -66,6 +75,13 @@ end;
 begin
 	plotly()
 	scatter3d(x_wing, y_wing, z_wing, markersize=0.5, color=:purple, xlims=range, ylims=range, zlims=range)
+end
+
+# ╔═╡ b74c74ef-925a-4f6e-85f5-eb0bf659dd84
+begin
+	plotly()
+	scatter3d(x_wing, y_wing, z_wing, markersize=0.5, color=:purple, xlims=range, ylims=range, zlims=range)
+    quiver!(x_wing, y_wing, z_wing, quiver=(n_x, n_y, n_z), color=:orange, linewidth=0.5)
 end
 
 # ╔═╡ 18e6b647-7a2f-42c5-893e-7bdb42a7854a
@@ -137,7 +153,9 @@ end
 begin
 	# Initial and boundary conditions # TODO
 	boundary_conditions = 
-		(u(t, x_wing, y_wing, z_wing) ~ 0.0, 
+		(u(t, x_wing, y_wing, z_wing) ~ 0.0, # no-slip condition in x
+		 v(t, x_wing, y_wing, z_wing) ~ 0.0, # no-slip condition in y
+		 w(t, x_wing, y_wing, z_wing) ~ 0.0  # no-slip condition in z
 		# u(t, 1) ~ 0.0, # for all t > 0
 		# u(0, x) ~ (sin(π * x) + 0.5 * sin(3 * π * x) + 0.25 * sin(5 * π * x))
 		) #for all  0 < x < 1
@@ -3426,10 +3444,13 @@ version = "1.4.1+1"
 # ╟─16577119-39dd-4031-9494-1f4aa93a61fe
 # ╟─a229be42-fee3-46ab-b90b-13c226b1d719
 # ╠═4e795395-e2e0-4c90-8707-68a0d0b55b58
+# ╠═7908b537-d671-43f7-8cd5-2f7f98471ca6
 # ╠═53c46c96-8696-4e5d-9f0c-53bf3fde3536
 # ╠═95a61d4e-dc1a-4088-b823-c75ca5c67134
+# ╠═d4f91560-41ba-4a59-bb66-979824fd59e3
 # ╠═42a33248-5e9b-410c-99a8-95b0d6c1abaf
 # ╠═63d1e788-efdb-4108-b36f-8a1c0b3c1d54
+# ╠═b74c74ef-925a-4f6e-85f5-eb0bf659dd84
 # ╠═18e6b647-7a2f-42c5-893e-7bdb42a7854a
 # ╟─9eac8440-8fa6-48b0-bc5a-e5873238bf9d
 # ╠═63ba7612-5d02-46ac-840a-5c8a0045829f

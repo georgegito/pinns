@@ -47,8 +47,14 @@ md"""
 
 # ╔═╡ e9e2e896-59ae-439f-9c40-1f3f726b0f68
 begin
-	filepath = "/Users/ggito/repos/pinns/src/julia/f1_front_wing/front_wing.csv"
-	p_df = CSV.File(filepath)
+	points_filepath = "/Users/ggito/repos/pinns/src/julia/f1_front_wing/front_wing.csv"
+	p_df = CSV.File(points_filepath)
+end
+
+# ╔═╡ 17706106-25c4-4186-9c80-700a978d07e2
+begin
+	norms_filepath = "/Users/ggito/repos/pinns/src/julia/f1_front_wing/front_wing_norms.csv"
+	n_df = CSV.File(norms_filepath)
 end
 
 # ╔═╡ 19f6d925-c411-40c1-b1db-4f88ce47fa8b
@@ -78,6 +84,11 @@ indices = sample(1:total_points, num_of_samples, replace=false)
 # ╔═╡ f2b9500e-e705-4701-a4f2-c5cef02d6b94
 begin 
 	p_sampled_df = DataFrame(x=p_df.x[indices], y=p_df.y[indices], z=p_df.z[indices])
+end
+
+# ╔═╡ aee803c3-d844-493c-912e-ded171626502
+begin 
+	n_sampled_df = DataFrame(x=n_df.x[indices], y=n_df.y[indices], z=n_df.z[indices])
 end
 
 # ╔═╡ 93b6f8a9-ff86-4607-aa20-b990d75f90a6
@@ -189,7 +200,11 @@ describe(p_unif_scaled_df)
 # 	CSV.write(out_filepath, p_unif_scaled_df)
 # end
 
-DownloadButton(p_unif_scaled_df, "front_wing_final.csv")
+DownloadButton(p_unif_scaled_df, "front_wing_points_final.csv")
+
+# ╔═╡ e769891c-3c2a-4d9a-b9f3-576c056ee3e5
+DownloadButton(n_sampled_df, "front_wing_norms_final.csv")
+
 
 # ╔═╡ c15f8302-ebc4-436d-9064-e0c1b0ae34cf
 # begin
@@ -1506,9 +1521,9 @@ version = "2.1.91+0"
 
 [[deps.JuliaFormatter]]
 deps = ["CSTParser", "CommonMark", "DataStructures", "Glob", "Pkg", "PrecompileTools", "Tokenize"]
-git-tree-sha1 = "2d2f630931dcf9cc4f753777a9c9ffb48d504116"
+git-tree-sha1 = "3d5b5b539e4606dcca0e6a467b98a64c8da4850b"
 uuid = "98e50ef6-434e-11e9-1051-2b60c6c9e899"
-version = "1.0.43"
+version = "1.0.42"
 
 [[deps.JuliaVariables]]
 deps = ["MLStyle", "NameResolution"]
@@ -3472,12 +3487,14 @@ version = "1.4.1+1"
 # ╟─5abc6ab1-bc48-43e4-8dc8-cfede46aeb7b
 # ╟─80cee14e-5867-403a-8daa-9c68f5eb4b5b
 # ╠═e9e2e896-59ae-439f-9c40-1f3f726b0f68
+# ╠═17706106-25c4-4186-9c80-700a978d07e2
 # ╠═19f6d925-c411-40c1-b1db-4f88ce47fa8b
 # ╟─969b87b0-077c-4320-8cef-46e75275e351
 # ╠═47570ed6-913b-4bc7-a7d7-7087492f30dd
 # ╠═911f5d8e-7c42-4457-a9aa-f823a19d2369
 # ╠═c24f9fb3-a31c-4c45-8b42-80e6b98b0215
 # ╠═f2b9500e-e705-4701-a4f2-c5cef02d6b94
+# ╠═aee803c3-d844-493c-912e-ded171626502
 # ╠═93b6f8a9-ff86-4607-aa20-b990d75f90a6
 # ╟─b794b7c6-5032-406d-8802-a3f2c03f95f9
 # ╟─102ec4f6-f8eb-4616-a4e4-980c1b4295e9
@@ -3498,6 +3515,7 @@ version = "1.4.1+1"
 # ╠═3ee4c126-0e26-4fb1-b38e-c1dbcb3715f2
 # ╠═399a8028-0dfe-43a2-a767-aaced4bfae0f
 # ╠═4e28f14c-0117-478a-a87c-ef9077e37f9d
+# ╠═e769891c-3c2a-4d9a-b9f3-576c056ee3e5
 # ╟─c15f8302-ebc4-436d-9064-e0c1b0ae34cf
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
