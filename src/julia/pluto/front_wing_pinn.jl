@@ -23,6 +23,7 @@ begin
 		using Images
 		using PlutoUI
 		using NeuralPDE
+		using Lux
 		import ModelingToolkit: Interval
 end
 
@@ -140,6 +141,9 @@ momentum_eq_z = Dt(w_func)  + u_func*Dx(w_func) + v_func*Dy(w_func) + w_func*Dz(
 # ╔═╡ d1ed8ee1-dc49-4065-aa01-d881b3e24a6c
 # TODO: poisson equation
 
+# ╔═╡ 37a47c00-c4b4-4702-8981-e9d772210e8f
+size([u(t, x_wing, y_wing, z_wing), v(t, x_wing, y_wing, z_wing), w(t, x_wing, y_wing, z_wing)])
+
 # ╔═╡ 1c718ba7-a6f8-428f-a1fe-c912361f4624
 pdes = [continuity_eq, momentum_eq_x, momentum_eq_y, momentum_eq_z]
 
@@ -149,10 +153,13 @@ begin
 	@bind nb html"<input type=range min=1000 max=200000 step=10000 value=10000>"
 end
 
+# ╔═╡ 60e8aad1-7a9d-4720-ad41-720cb44cbb90
+# TODO: impermeability condition
+
 # ╔═╡ c022739f-db5a-4d7c-ac72-69c6caf0ffd6
 begin
 	# Initial and boundary conditions # TODO
-	boundary_conditions = 
+	bcs = 
 		(u(t, x_wing, y_wing, z_wing) ~ 0.0, # no-slip condition in x
 		 v(t, x_wing, y_wing, z_wing) ~ 0.0, # no-slip condition in y
 		 w(t, x_wing, y_wing, z_wing) ~ 0.0  # no-slip condition in z
@@ -234,12 +241,78 @@ begin
 	scatter3d!(grid_flat, markersize=0.5, color=:yellow, xlims=range, ylims=range, zlims=range, markeropacity=0.8)
 end
 
+# ╔═╡ f6f6ed2f-9594-4e5e-9e4e-3cee7b660e1a
+md"""
+###
+###
+###
+### PINN
+"""
+
+# ╔═╡ b5fc3107-9020-4b6c-8db8-cd8e46aad379
+begin
+	# Neural network
+	hidden_size = 16
+	
+	chain = Chain(Dense(2, hidden_size, Lux.sigmoid_fast),
+	              Dense(hidden_size, hidden_size, Lux.sigmoid_fast),
+	              Dense(hidden_size, hidden_size, Lux.sigmoid_fast),
+	            #   Dense(hidden_size, hidden_size, Lux.sigmoid_fast),
+	            #   Dense(hidden_size, hidden_size, Lux.sigmoid_fast),
+	              Dense(hidden_size, 1))
+	
+	# if use_gpu
+	#     ps = Lux.setup(Random.default_rng(), chain)[1]
+	#     ps = ps |> ComponentArray |> Lux.gpu .|> Float64
+	# end
+	
+	# strategy = GridTraining([dt, dx])
+	Nf = 1000 # number of collocation points for pde evalution
+	Nb = 1000 # number of points for boundary and initial conditions evaluation
+	# strategy = StochasticTraining(Nf + Nb, bcs_points=Nb)
+	# strategy = QuasiRandomTraining(Nf + Nb, bcs_points=Nb)
+	# strategy = QuasiRandomTraining(Nf + Nb, bcs_points=Nb, resampling=false, minibatch=1)
+	# strategy = QuasiRandomTraining(Nf + Nb)
+	strategy = QuasiRandomTraining(Nf + Nb, bcs_points=Nb, sampling_alg=NeuralPDE.SobolSample())
+	# strategy = QuasiRandomTraining(Nf + Nb, bcs_points=Nb, sampling_alg=NeuralPDE.SobolSample(), resampling=false, minibatch=1)
+	discretization = PhysicsInformedNN(chain, strategy)
+	
+	display(chain)
+end
+
+# ╔═╡ 2690ade5-90a3-43bf-9c92-78423b84babb
+@named pde_system = PDESystem(pdes, bcs, domains, [t, x, y, z], [u(t, x, y, z), v(t, x, y, z), w(t, x, y, z), p(t, x, y, z)])
+
+# ╔═╡ 01d8a09b-31e1-42e1-9afa-516c105d5321
+begin
+	prob = discretize(pde_system, discretization)
+	epoch = 0
+	
+	callback = function (p, l)
+	    global epoch
+	    epoch += 1
+	    if epoch % 10 == 0
+	        println("Epoch: $epoch\tLoss: $l")
+	    end
+	    return false
+	end
+	
+	# optimizer
+	opt = Optim.BFGS()
+	# opt = Adam()
+	# opt = Optim.GradientDescent(P=0.01)
+end
+
+# ╔═╡ f59a16ee-422c-4e60-8d46-2c9905c84f48
+res = @time Optimization.solve(prob, opt; callback=callback, maxiters=1000)
+
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Images = "916415d5-f1e6-5110-898d-aaa5f9f070e0"
+Lux = "b2108857-7c20-44ae-9111-449ecde12c47"
 ModelingToolkit = "961ee093-0014-501f-94e3-6117800e7a78"
 NeuralPDE = "315f7962-48a3-4962-8226-d0f33b1235f0"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
@@ -250,6 +323,7 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 CSV = "~0.10.11"
 DataFrames = "~1.6.1"
 Images = "~0.26.0"
+Lux = "~0.5.10"
 ModelingToolkit = "~8.70.0"
 NeuralPDE = "~5.9.0"
 Plots = "~1.39.0"
@@ -263,7 +337,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.9.4"
 manifest_format = "2.0"
-project_hash = "1de07c30f8495220e1f4fe31a792d0ab548c1cec"
+project_hash = "95447660ce3b50e0197d3aedba2cf96cbb43202a"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "332e5d7baeff8497b923b730b994fa480601efc7"
@@ -3461,8 +3535,10 @@ version = "1.4.1+1"
 # ╠═87c62b31-08d1-484e-975c-2ce69a00b418
 # ╠═2f7ee4e8-45df-49d9-bf82-e3a990666e36
 # ╠═d1ed8ee1-dc49-4065-aa01-d881b3e24a6c
+# ╠═37a47c00-c4b4-4702-8981-e9d772210e8f
 # ╠═1c718ba7-a6f8-428f-a1fe-c912361f4624
 # ╠═f876da2e-96f9-45d3-8688-52861d641bf9
+# ╠═60e8aad1-7a9d-4720-ad41-720cb44cbb90
 # ╠═c022739f-db5a-4d7c-ac72-69c6caf0ffd6
 # ╠═c91ba709-b2f0-446a-b836-bb9f4343d059
 # ╠═df6a54c1-8525-4373-8164-8d4bc13284cc
@@ -3473,5 +3549,10 @@ version = "1.4.1+1"
 # ╠═f1dce198-bc7d-409c-a3a1-bfeba8dc036c
 # ╠═cae8dfee-4daa-4de7-bc3b-43df52aea4bf
 # ╠═ea694bd8-fdac-4b29-9e43-a37a97ae7690
+# ╟─f6f6ed2f-9594-4e5e-9e4e-3cee7b660e1a
+# ╠═b5fc3107-9020-4b6c-8db8-cd8e46aad379
+# ╠═2690ade5-90a3-43bf-9c92-78423b84babb
+# ╠═01d8a09b-31e1-42e1-9afa-516c105d5321
+# ╠═f59a16ee-422c-4e60-8d46-2c9905c84f48
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
