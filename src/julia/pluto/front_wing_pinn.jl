@@ -32,6 +32,9 @@ begin
 	import ModelingToolkit: Interval
 end
 
+# ╔═╡ 8ffb6f43-b5c9-42a8-ad52-8d120de5fa10
+using Serialization
+
 # ╔═╡ 16577119-39dd-4031-9494-1f4aa93a61fe
 md"""
 # Physics Informed Neural Networks $br F1 Car Front Wing Aerodymanics
@@ -161,9 +164,6 @@ end
 # ╔═╡ 60e8aad1-7a9d-4720-ad41-720cb44cbb90
 # TODO: impermeability condition
 
-# ╔═╡ 80448fe3-5d03-424c-880c-f65c6ec5d072
-# temp = [(u(t, x, y, z), v(t, x, y, z), w(t, x, y, z))  for (x, y, z) in zip(x_wing, y_wing, z_wing)];
-
 # ╔═╡ c65ad717-4678-4c6a-8ae7-916d1a5eb9f4
 u_wing = [u(t, x, y, z) for (x, y, z) in zip(x_wing, y_wing, z_wing)]
 
@@ -188,9 +188,6 @@ begin
 		# u(0, x) ~ (sin(π * x) + 0.5 * sin(3 * π * x) + 0.25 * sin(5 * π * x))
 		) #for all  0 < x < 1
 end
-
-# ╔═╡ f811f48b-0a7b-473a-b2a0-6736e8f837a8
-bcs
 
 # ╔═╡ c91ba709-b2f0-446a-b836-bb9f4343d059
 # TODO: add real data as training points from cfd simulation
@@ -336,8 +333,18 @@ end
 # ╔═╡ 3269f291-8b44-434e-823f-fe6c2aa6c42a
 pde_system
 
+# ╔═╡ b823520f-d976-401b-ae9c-ad52286e4a6a
+serialize("/Users/ggito/repos/pinns/src/julia/f1_front_wing/test", prob)
+
+
+# ╔═╡ bbc630cd-b810-46d0-8364-1358eebf874b
+test = deserialize("/Users/ggito/repos/pinns/src/julia/f1_front_wing/test")
+
+# ╔═╡ e4d32dfe-0541-4619-a5cd-d474503f7c00
+prob
+
 # ╔═╡ f59a16ee-422c-4e60-8d46-2c9905c84f48
-res = @time Optimization.solve(prob, opt; callback=callback, maxiters=150)
+# res = @time Optimization.solve(prob, opt; callback=callback, maxiters=150)
 # res = @time Optimization.solve(prob, opt; maxiters=1000)
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -356,6 +363,7 @@ OptimizationOptimJL = "36348300-93cb-4f02-beb5-3c3902f8871e"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
@@ -380,7 +388,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.9.4"
 manifest_format = "2.0"
-project_hash = "4234106a12af23f73210932a316057175faa5f28"
+project_hash = "2661d09d3908753a22196468f2a6fe0066506d7c"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "332e5d7baeff8497b923b730b994fa480601efc7"
@@ -3578,12 +3586,10 @@ version = "1.4.1+1"
 # ╠═1c718ba7-a6f8-428f-a1fe-c912361f4624
 # ╠═f876da2e-96f9-45d3-8688-52861d641bf9
 # ╠═60e8aad1-7a9d-4720-ad41-720cb44cbb90
-# ╠═80448fe3-5d03-424c-880c-f65c6ec5d072
 # ╠═c65ad717-4678-4c6a-8ae7-916d1a5eb9f4
 # ╠═7f61c363-aa65-450d-9b52-61955bfeb01c
 # ╠═73d3a941-686e-4d4f-94c4-ea25ae741e87
 # ╠═c022739f-db5a-4d7c-ac72-69c6caf0ffd6
-# ╠═f811f48b-0a7b-473a-b2a0-6736e8f837a8
 # ╠═c91ba709-b2f0-446a-b836-bb9f4343d059
 # ╠═df6a54c1-8525-4373-8164-8d4bc13284cc
 # ╟─1ca22196-dfe7-4728-843e-fc53679763cb
@@ -3601,6 +3607,10 @@ version = "1.4.1+1"
 # ╠═2690ade5-90a3-43bf-9c92-78423b84babb
 # ╠═01d8a09b-31e1-42e1-9afa-516c105d5321
 # ╠═3269f291-8b44-434e-823f-fe6c2aa6c42a
+# ╠═8ffb6f43-b5c9-42a8-ad52-8d120de5fa10
+# ╠═b823520f-d976-401b-ae9c-ad52286e4a6a
+# ╠═bbc630cd-b810-46d0-8364-1358eebf874b
+# ╠═e4d32dfe-0541-4619-a5cd-d474503f7c00
 # ╠═f59a16ee-422c-4e60-8d46-2c9905c84f48
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
