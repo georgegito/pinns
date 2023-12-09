@@ -22,4 +22,4 @@ println("Training PINN")
 
 display(prob)
 
-res = @time Optimization.solve(prob, opt; callback=callback, maxiters=150)
+res = @time Optimization.solve(prob, opt; callback=callback, maxiters=15)
