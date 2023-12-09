@@ -28,12 +28,9 @@ begin
 	using Optimization
 	using Metal
 	using Random
-	using ComponentArrays
+	using Serialization
 	import ModelingToolkit: Interval
 end
-
-# ╔═╡ 8ffb6f43-b5c9-42a8-ad52-8d120de5fa10
-using Serialization
 
 # ╔═╡ 16577119-39dd-4031-9494-1f4aa93a61fe
 md"""
@@ -49,15 +46,25 @@ md"""
 ### Load & Display Model
 """
 
+# ╔═╡ b1a0b812-ab28-4770-b2f5-f17b6e972ae8
+md"""
+Point Cloud:
+"""
+
 # ╔═╡ 4e795395-e2e0-4c90-8707-68a0d0b55b58
 begin
-	points_filepath = "/Users/ggito/repos/pinns/src/julia/f1_front_wing/front_wing_points_final.csv"
+	points_filepath = "/Users/ggito/repos/pinns/src/julia/data/front_wing_points_final.csv"
 	wing_df = DataFrame(CSV.File(points_filepath))
 end
 
+# ╔═╡ b97408ad-b24a-4f13-bcbc-27a14fa20218
+md"""
+Normal Vectors:
+"""
+
 # ╔═╡ 7908b537-d671-43f7-8cd5-2f7f98471ca6
 begin
-	norms_filepath = "/Users/ggito/repos/pinns/src/julia/f1_front_wing/front_wing_norms_final.csv"
+	norms_filepath = "/Users/ggito/repos/pinns/src/julia/data/front_wing_norms_final.csv"
 	norms_df = DataFrame(CSV.File(norms_filepath))
 end
 
@@ -80,11 +87,21 @@ begin
 	range = (min, max)	
 end;
 
+# ╔═╡ 3c275a89-ed36-4d49-9176-138f53107642
+md"""
+Model:
+"""
+
 # ╔═╡ 63d1e788-efdb-4108-b36f-8a1c0b3c1d54
 begin
 	plotly()
 	scatter3d(x_wing, y_wing, z_wing, markersize=0.5, color=:purple, xlims=range, ylims=range, zlims=range)
 end
+
+# ╔═╡ b4a37c55-7eed-468a-9aed-718708b23a3e
+md"""
+Model with Normal Vectors:
+"""
 
 # ╔═╡ b74c74ef-925a-4f6e-85f5-eb0bf659dd84
 begin
@@ -132,7 +149,7 @@ begin
 	v_func = v(t, x, y, z)
 	w_func = w(t, x, y, z)
 	p_func = p(t, x, y,z)
-end
+end;
 
 # ╔═╡ 5adca675-a428-4d85-83d8-fa10d5e44384
 continuity_eq = Dx(u_func) + Dy(v_func) + Dz(w_func) ~ 0
@@ -149,17 +166,8 @@ momentum_eq_z = Dt(w_func)  + u_func*Dx(w_func) + v_func*Dy(w_func) + w_func*Dz(
 # ╔═╡ d1ed8ee1-dc49-4065-aa01-d881b3e24a6c
 # TODO: poisson equation
 
-# ╔═╡ 37a47c00-c4b4-4702-8981-e9d772210e8f
-size([u(t, x_wing, y_wing, z_wing), v(t, x_wing, y_wing, z_wing), w(t, x_wing, y_wing, z_wing)])
-
 # ╔═╡ 1c718ba7-a6f8-428f-a1fe-c912361f4624
 pdes = [continuity_eq, momentum_eq_x, momentum_eq_y, momentum_eq_z]
-
-# ╔═╡ f876da2e-96f9-45d3-8688-52861d641bf9
-begin
-	nb = 10000
-	@bind nb html"<input type=range min=1000 max=200000 step=10000 value=10000>"
-end
 
 # ╔═╡ 60e8aad1-7a9d-4720-ad41-720cb44cbb90
 # TODO: impermeability condition
@@ -178,14 +186,15 @@ begin
 	# Initial and boundary conditions # TODO
 	bcs = 
 		# TODO: remove indexing
-		([u_wing .~ 0 # no-slip condition x
-		  v_wing .~ 0 # no-slip condition y
-		  w_wing .~ 0] # no-slip condition z
-		 # u_wing[1:10] .~ 0 # no-slip condition x
-		 # v_wing[1:10] .~ 0 # no-slip condition y
-		 # w_wing[1:10] .~ 0] # no-slip condition z
-		# u(t, 1) ~ 0.0, # for all t > 0
-		# u(0, x) ~ (sin(π * x) + 0.5 * sin(3 * π * x) + 0.25 * sin(5 * π * x))
+		([
+		  u_wing .~ 0 # no-slip condition x
+	      v_wing .~ 0 # no-slip condition y
+	      w_wing .~ 0] # no-slip condition z
+		  # u_wing[1:10] .~ 0 # no-slip condition x
+		  # v_wing[1:10] .~ 0 # no-slip condition y
+		  # w_wing[1:10] .~ 0] # no-slip condition z
+		  # u(t, 1) ~ 0.0, # for all t > 0
+		  # u(0, x) ~ (sin(π * x) + 0.5 * sin(3 * π * x) + 0.25 * sin(5 * π * x))
 		) #for all  0 < x < 1
 end
 
@@ -221,7 +230,7 @@ md"""
 # ╔═╡ 1b4f8e1d-b0a7-4291-bf10-aae64c19b898
 begin
 	# Discretization parameters
-	Nt = 300  # Number of time steps
+	Nt = 100  # Number of time steps
 	# Nt = 5  # Number of time steps
 	# Nx = 30    # Number of spatial grid points x
 	# Ny = 30    # Number of spatial grid points y
@@ -245,7 +254,7 @@ begin
 	x_s = x_min:dx:(x_max * outline_factor)
 	y_s = y_min:dy:(y_max * outline_factor)
 	z_s = z_min:dz:(z_max * outline_factor)
-end
+end;
 
 # ╔═╡ 6e3e90f2-c459-44ae-9111-7edf4da37cfe
 grid = [(x, y, z) for x in x_s, y in y_s, z in z_s]
@@ -274,36 +283,69 @@ md"""
 # ╔═╡ 5b2fef33-9527-4b0d-943a-8594f4925fb6
 Metal.versioninfo()
 
+# ╔═╡ 6eabf3cf-541a-4be2-bb73-a2c8983a9fc9
+md"""
+hidden layer size:
+"""
+
+# ╔═╡ 1f47a417-e257-475c-848f-03d99433130f
+@bind hidden_layer_size Select([4, 8, 16, 32, 64, 128])
+
+# ╔═╡ fdb337e9-594f-4627-a7be-9c5708df9a61
+md"""
+number of hidden layers:
+"""
+
+# ╔═╡ ac54f07f-8389-410a-b373-cc4bffd51689
+@bind num_of_hidden_layers Select([2, 5, 10, 20])
+
 # ╔═╡ b5fc3107-9020-4b6c-8db8-cd8e46aad379
 begin
-	# Neural network
-	hidden_size = 512
+	in_layer = Dense(4, hidden_layer_size, Lux.sigmoid_fast)
+	out_layer = Dense(hidden_layer_size, 4)
 	
-	chain = Chain(Dense(4, hidden_size, Lux.sigmoid_fast),
-	              Dense(hidden_size, hidden_size, Lux.sigmoid_fast),
-	              Dense(hidden_size, hidden_size, Lux.sigmoid_fast),
-	            #   Dense(hidden_size, hidden_size, Lux.sigmoid_fast),
-	            #   Dense(hidden_size, hidden_size, Lux.sigmoid_fast),
-	              Dense(hidden_size, 4))
+	hidden_layers = [Dense(hidden_layer_size, hidden_layer_size, Lux.sigmoid_fast) for _ in 1:num_of_hidden_layers]
+	
+	chain = Chain(in_layer, hidden_layers, out_layer)
 end
 
 # ╔═╡ b3e6d94a-0091-4853-950b-b213efca9d51
+# begin
+# 	ps = Lux.setup(Random.default_rng(), chain)[1]
+# 	ps = ps |> gpu_device()
+# end
+
+# ╔═╡ 18d89e87-6275-4eb1-bccc-85e671aeb4a2
+md"""
+Nb (number of points for boundary and initial conditions evaluation):
+"""
+
+# ╔═╡ e614ad80-fa79-4065-86fa-b582426f5f4b
 begin
-	ps = Lux.setup(Random.default_rng(), chain)[1]
-	ps = ps |> gpu_device()
+	Nb = 200 # number of points for boundary and initial conditions evaluation
+	@bind Nb html"<input type=range min=200 max=1000 step=100 value=200>"
 end
+
+# ╔═╡ 80b336ab-023b-43cf-9366-f72eef62b366
+Nb
+
+# ╔═╡ d67a1e4c-3d6c-4e17-ba99-08a87f7a56cc
+md"""
+Nf (number of collocation points for pde evalution):
+"""
+
+# ╔═╡ 0c25b1a9-5b41-499b-815a-7a21667e9d62
+begin
+	Nf = 1000 # number of collocation points for pde evalution
+	@bind Nf html"<input type=range min=1000 max=2000 step=100 value=1000>"
+end
+
+# ╔═╡ 5e7cb3b0-cd94-449b-b4ab-c09555e09c73
+Nf
 
 # ╔═╡ fbe48b8d-92c3-425b-ba91-63c00f837b1d
 begin
-	# strategy = GridTraining([dt, dx])
-		Nf = 1000 # number of collocation points for pde evalution
-		Nb = 1000 # number of points for boundary and initial conditions evaluation
-		# strategy = StochasticTraining(Nf + Nb, bcs_points=Nb)
-		# strategy = QuasiRandomTraining(Nf + Nb, bcs_points=Nb)
-		# strategy = QuasiRandomTraining(Nf + Nb, bcs_points=Nb, resampling=false, minibatch=1)
-		# strategy = QuasiRandomTraining(Nf + Nb)
 		strategy = QuasiRandomTraining(Nf + Nb, bcs_points=Nb, sampling_alg=NeuralPDE.SobolSample())
-		# strategy = QuasiRandomTraining(Nf + Nb, bcs_points=Nb, sampling_alg=NeuralPDE.SobolSample(), resampling=false, minibatch=1)
 		discretization = PhysicsInformedNN(chain, strategy)
 end
 
@@ -323,35 +365,15 @@ begin
 	    # end
 	    return false
 	end
-	
-	# optimizer
-	opt = Optim.BFGS()
-	# opt = Adam()
-	# opt = Optim.GradientDescent(P=0.01)
-end
-
-# ╔═╡ 3269f291-8b44-434e-823f-fe6c2aa6c42a
-pde_system
+end;
 
 # ╔═╡ b823520f-d976-401b-ae9c-ad52286e4a6a
-serialize("/Users/ggito/repos/pinns/src/julia/f1_front_wing/test", prob)
-
-
-# ╔═╡ bbc630cd-b810-46d0-8364-1358eebf874b
-test = deserialize("/Users/ggito/repos/pinns/src/julia/f1_front_wing/test")
-
-# ╔═╡ e4d32dfe-0541-4619-a5cd-d474503f7c00
-prob
-
-# ╔═╡ f59a16ee-422c-4e60-8d46-2c9905c84f48
-# res = @time Optimization.solve(prob, opt; callback=callback, maxiters=150)
-# res = @time Optimization.solve(prob, opt; maxiters=1000)
+serialize("/Users/ggito/repos/pinns/src/julia/models/pinn", prob)
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
-ComponentArrays = "b0b7db55-cfe3-40fc-9ded-d10e2dbeff66"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Images = "916415d5-f1e6-5110-898d-aaa5f9f070e0"
 Lux = "b2108857-7c20-44ae-9111-449ecde12c47"
@@ -368,7 +390,6 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
 CSV = "~0.10.11"
-ComponentArrays = "~0.15.5"
 DataFrames = "~1.6.1"
 Images = "~0.26.0"
 Lux = "~0.5.10"
@@ -388,7 +409,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.9.4"
 manifest_format = "2.0"
-project_hash = "2661d09d3908753a22196468f2a6fe0066506d7c"
+project_hash = "a6fa2e9a78d03dc1ad882bc4f1d14bacf77fc892"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "332e5d7baeff8497b923b730b994fa480601efc7"
@@ -3564,27 +3585,29 @@ version = "1.4.1+1"
 # ╠═8f92e39c-912f-11ee-1a56-afaa3ba2968c
 # ╟─16577119-39dd-4031-9494-1f4aa93a61fe
 # ╟─a229be42-fee3-46ab-b90b-13c226b1d719
-# ╠═4e795395-e2e0-4c90-8707-68a0d0b55b58
-# ╠═7908b537-d671-43f7-8cd5-2f7f98471ca6
-# ╠═53c46c96-8696-4e5d-9f0c-53bf3fde3536
+# ╟─b1a0b812-ab28-4770-b2f5-f17b6e972ae8
+# ╟─4e795395-e2e0-4c90-8707-68a0d0b55b58
+# ╟─b97408ad-b24a-4f13-bcbc-27a14fa20218
+# ╟─7908b537-d671-43f7-8cd5-2f7f98471ca6
+# ╟─53c46c96-8696-4e5d-9f0c-53bf3fde3536
 # ╠═95a61d4e-dc1a-4088-b823-c75ca5c67134
 # ╠═d4f91560-41ba-4a59-bb66-979824fd59e3
-# ╠═42a33248-5e9b-410c-99a8-95b0d6c1abaf
-# ╠═63d1e788-efdb-4108-b36f-8a1c0b3c1d54
-# ╠═b74c74ef-925a-4f6e-85f5-eb0bf659dd84
-# ╠═18e6b647-7a2f-42c5-893e-7bdb42a7854a
+# ╟─42a33248-5e9b-410c-99a8-95b0d6c1abaf
+# ╟─3c275a89-ed36-4d49-9176-138f53107642
+# ╟─63d1e788-efdb-4108-b36f-8a1c0b3c1d54
+# ╟─b4a37c55-7eed-468a-9aed-718708b23a3e
+# ╟─b74c74ef-925a-4f6e-85f5-eb0bf659dd84
+# ╟─18e6b647-7a2f-42c5-893e-7bdb42a7854a
 # ╟─9eac8440-8fa6-48b0-bc5a-e5873238bf9d
-# ╠═63ba7612-5d02-46ac-840a-5c8a0045829f
+# ╟─63ba7612-5d02-46ac-840a-5c8a0045829f
 # ╠═c1f45a4c-51be-4fa7-befb-890bec0bba03
-# ╠═8da0511a-6f5e-4ecb-8248-3f1e2c27bf12
-# ╠═5adca675-a428-4d85-83d8-fa10d5e44384
-# ╠═766974ae-d4ce-4823-9393-0cb5a6f4d84e
-# ╠═87c62b31-08d1-484e-975c-2ce69a00b418
-# ╠═2f7ee4e8-45df-49d9-bf82-e3a990666e36
+# ╟─8da0511a-6f5e-4ecb-8248-3f1e2c27bf12
+# ╟─5adca675-a428-4d85-83d8-fa10d5e44384
+# ╟─766974ae-d4ce-4823-9393-0cb5a6f4d84e
+# ╟─87c62b31-08d1-484e-975c-2ce69a00b418
+# ╟─2f7ee4e8-45df-49d9-bf82-e3a990666e36
 # ╠═d1ed8ee1-dc49-4065-aa01-d881b3e24a6c
-# ╠═37a47c00-c4b4-4702-8981-e9d772210e8f
-# ╠═1c718ba7-a6f8-428f-a1fe-c912361f4624
-# ╠═f876da2e-96f9-45d3-8688-52861d641bf9
+# ╟─1c718ba7-a6f8-428f-a1fe-c912361f4624
 # ╠═60e8aad1-7a9d-4720-ad41-720cb44cbb90
 # ╠═c65ad717-4678-4c6a-8ae7-916d1a5eb9f4
 # ╠═7f61c363-aa65-450d-9b52-61955bfeb01c
@@ -3594,23 +3617,28 @@ version = "1.4.1+1"
 # ╠═df6a54c1-8525-4373-8164-8d4bc13284cc
 # ╟─1ca22196-dfe7-4728-843e-fc53679763cb
 # ╠═1b4f8e1d-b0a7-4291-bf10-aae64c19b898
-# ╠═7730633a-fed4-4261-ac4b-5492cd6fcd13
-# ╠═6e3e90f2-c459-44ae-9111-7edf4da37cfe
-# ╠═f1dce198-bc7d-409c-a3a1-bfeba8dc036c
-# ╠═cae8dfee-4daa-4de7-bc3b-43df52aea4bf
-# ╠═ea694bd8-fdac-4b29-9e43-a37a97ae7690
+# ╟─7730633a-fed4-4261-ac4b-5492cd6fcd13
+# ╟─6e3e90f2-c459-44ae-9111-7edf4da37cfe
+# ╟─f1dce198-bc7d-409c-a3a1-bfeba8dc036c
+# ╟─cae8dfee-4daa-4de7-bc3b-43df52aea4bf
+# ╟─ea694bd8-fdac-4b29-9e43-a37a97ae7690
 # ╟─f6f6ed2f-9594-4e5e-9e4e-3cee7b660e1a
-# ╠═5b2fef33-9527-4b0d-943a-8594f4925fb6
-# ╠═b5fc3107-9020-4b6c-8db8-cd8e46aad379
-# ╠═b3e6d94a-0091-4853-950b-b213efca9d51
+# ╟─5b2fef33-9527-4b0d-943a-8594f4925fb6
+# ╟─6eabf3cf-541a-4be2-bb73-a2c8983a9fc9
+# ╟─1f47a417-e257-475c-848f-03d99433130f
+# ╟─fdb337e9-594f-4627-a7be-9c5708df9a61
+# ╟─ac54f07f-8389-410a-b373-cc4bffd51689
+# ╟─b5fc3107-9020-4b6c-8db8-cd8e46aad379
+# ╟─b3e6d94a-0091-4853-950b-b213efca9d51
+# ╟─18d89e87-6275-4eb1-bccc-85e671aeb4a2
+# ╟─e614ad80-fa79-4065-86fa-b582426f5f4b
+# ╟─80b336ab-023b-43cf-9366-f72eef62b366
+# ╟─d67a1e4c-3d6c-4e17-ba99-08a87f7a56cc
+# ╟─0c25b1a9-5b41-499b-815a-7a21667e9d62
+# ╟─5e7cb3b0-cd94-449b-b4ab-c09555e09c73
 # ╠═fbe48b8d-92c3-425b-ba91-63c00f837b1d
-# ╠═2690ade5-90a3-43bf-9c92-78423b84babb
-# ╠═01d8a09b-31e1-42e1-9afa-516c105d5321
-# ╠═3269f291-8b44-434e-823f-fe6c2aa6c42a
-# ╠═8ffb6f43-b5c9-42a8-ad52-8d120de5fa10
+# ╟─2690ade5-90a3-43bf-9c92-78423b84babb
+# ╟─01d8a09b-31e1-42e1-9afa-516c105d5321
 # ╠═b823520f-d976-401b-ae9c-ad52286e4a6a
-# ╠═bbc630cd-b810-46d0-8364-1358eebf874b
-# ╠═e4d32dfe-0541-4619-a5cd-d474503f7c00
-# ╠═f59a16ee-422c-4e60-8d46-2c9905c84f48
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

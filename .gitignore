@@ -7,3 +7,5 @@
 *.csv
 *tips.jl
 .DS_Store
+src/julia/models/*
+src/julia/data/*
