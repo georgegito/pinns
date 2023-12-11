@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.32
+# v0.19.35
 
 using Markdown
 using InteractiveUtils
@@ -24,11 +24,13 @@ begin
 	using PlutoUI
 	using NeuralPDE
 	using Lux
-	using OptimizationOptimJL
 	using Optimization
+	using OptimizationOptimJL
+	using OptimizationOptimisers
 	using Metal
 	using Random
 	using Serialization
+	using ComponentArrays
 	import ModelingToolkit: Interval
 end
 
@@ -72,10 +74,19 @@ end
 total_points = nrow(wing_df)
 
 # ╔═╡ 95a61d4e-dc1a-4088-b823-c75ca5c67134
-x_wing, y_wing, z_wing = wing_df.x, wing_df.y, wing_df.z
+begin
+	x_wing, y_wing, z_wing = wing_df.x, wing_df.y, wing_df.z
+	x_wing, y_wing, z_wing = Float32.(x_wing), Float32.(y_wing), Float32.(z_wing)
+end
+
+# ╔═╡ 09a77cd8-b464-4da5-aa59-3062b3611d2d
+
 
 # ╔═╡ d4f91560-41ba-4a59-bb66-979824fd59e3
-n_x , n_y, n_z = norms_df.x ./ 100, norms_df.y ./ 100, norms_df.z ./ 100 # divide normal vectors by 100 for display purposes
+begin
+	n_x , n_y, n_z = norms_df.x ./ 100, norms_df.y ./ 100, norms_df.z ./ 100 # divide normal vectors by 100 for display purposes
+	n_x, n_y, n_z = Float32.(n_x), Float32.(n_y), Float32.(n_z)
+end
 
 # ╔═╡ 42a33248-5e9b-410c-99a8-95b0d6c1abaf
 begin
@@ -309,6 +320,13 @@ begin
 	chain = Chain(in_layer, hidden_layers, out_layer)
 end
 
+# ╔═╡ 76b73750-81aa-44ae-9f2e-c67c5344c20c
+begin
+	ps = Lux.setup(Random.default_rng(), chain)[1]
+	ps = ps |> ComponentArray |> gpu_device()
+	ps = Float32.(ps)
+end
+
 # ╔═╡ b3e6d94a-0091-4853-950b-b213efca9d51
 # begin
 # 	ps = Lux.setup(Random.default_rng(), chain)[1]
@@ -346,34 +364,54 @@ Nf
 # ╔═╡ fbe48b8d-92c3-425b-ba91-63c00f837b1d
 begin
 		strategy = QuasiRandomTraining(Nf + Nb, bcs_points=Nb, sampling_alg=NeuralPDE.SobolSample())
-		discretization = PhysicsInformedNN(chain, strategy)
+		discretization = PhysicsInformedNN(chain, strategy, init_params=ps)
 end
 
 # ╔═╡ 2690ade5-90a3-43bf-9c92-78423b84babb
 @named pde_system = PDESystem(pdes, bcs, domains, [t, x, y, z], [u(t, x, y, z), v(t, x, y, z), w(t, x, y, z), p(t, x, y, z)])
 
-# ╔═╡ 01d8a09b-31e1-42e1-9afa-516c105d5321
-begin
-	prob = discretize(pde_system, discretization)
-	epoch = 0
-	
-	callback = function (p, l)
-	    global epoch
-	    epoch += 1
-	    # if epoch % 10 == 0
-	        println("Epoch: $epoch\tLoss: $l")
-	    # end
-	    return false
-	end
-end;
+# ╔═╡ cf330eef-528d-48d6-ad6e-6c545793f13e
+prob = discretize(pde_system, discretization)
 
 # ╔═╡ b823520f-d976-401b-ae9c-ad52286e4a6a
 serialize("/Users/ggito/repos/pinns/src/julia/models/pinn", prob)
+
+# ╔═╡ 0c421ed1-0c58-4837-8519-ed16cedef764
+begin
+	epoch = 0
+	
+	callback = function (p, l)
+	  global epoch
+	  epoch += 1
+	  # if epoch % 10 == 0
+	      println("Epoch: $epoch\tLoss: $l")
+	  # end
+	  return false
+	end
+	
+	# opt = Optim.BFGS()
+	# opt = Optim.GradientDescent(P=Float32(0.01))
+    opt = Adam(Float32(0.01))
+	
+	println("Training PINN")
+	
+	# res = @time Optimization.solve(prob, opt; callback=callback, maxiters=150)
+end
+
+# ╔═╡ fe9ef347-1603-4cda-8ce2-2b43282867fb
+# res = @time Optimization.solve(prob, opt; callback=callback, maxiters=150)
+
+# ╔═╡ c97e555a-ed96-4a93-92a5-11ccd8fcb157
+
+
+# ╔═╡ 51f4ff69-0d6e-441f-9d17-85915bd3dc06
+
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+ComponentArrays = "b0b7db55-cfe3-40fc-9ded-d10e2dbeff66"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Images = "916415d5-f1e6-5110-898d-aaa5f9f070e0"
 Lux = "b2108857-7c20-44ae-9111-449ecde12c47"
@@ -382,6 +420,7 @@ ModelingToolkit = "961ee093-0014-501f-94e3-6117800e7a78"
 NeuralPDE = "315f7962-48a3-4962-8226-d0f33b1235f0"
 Optimization = "7f7a1694-90dd-40f0-9382-eb1efda571ba"
 OptimizationOptimJL = "36348300-93cb-4f02-beb5-3c3902f8871e"
+OptimizationOptimisers = "42dfb2eb-d2b4-4451-abcd-913932933ac1"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
@@ -390,14 +429,16 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
 CSV = "~0.10.11"
+ComponentArrays = "~0.15.5"
 DataFrames = "~1.6.1"
 Images = "~0.26.0"
 Lux = "~0.5.10"
-Metal = "~0.5.0"
+Metal = "~0.5.1"
 ModelingToolkit = "~8.70.0"
 NeuralPDE = "~5.9.0"
 Optimization = "~3.19.3"
 OptimizationOptimJL = "~0.1.14"
+OptimizationOptimisers = "~0.1.6"
 Plots = "~1.39.0"
 PlutoUI = "~0.7.54"
 StatsBase = "~0.34.2"
@@ -409,7 +450,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.9.4"
 manifest_format = "2.0"
-project_hash = "a6fa2e9a78d03dc1ad882bc4f1d14bacf77fc892"
+project_hash = "0272a31c2bd700c373df90ef8b4c2c6a12251c75"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "332e5d7baeff8497b923b730b994fa480601efc7"
@@ -1059,9 +1100,9 @@ version = "0.3.2"
 
 [[deps.FFTW]]
 deps = ["AbstractFFTs", "FFTW_jll", "LinearAlgebra", "MKL_jll", "Preferences", "Reexport"]
-git-tree-sha1 = "b4fbdd20c889804969571cc589900803edda16b7"
+git-tree-sha1 = "ec22cbbcd01cba8f41eecd7d44aac1f23ee985e3"
 uuid = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
-version = "1.7.1"
+version = "1.7.2"
 
 [[deps.FFTW_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1228,9 +1269,9 @@ version = "3.3.8+0"
 
 [[deps.GPUArrays]]
 deps = ["Adapt", "GPUArraysCore", "LLVM", "LinearAlgebra", "Printf", "Random", "Reexport", "Serialization", "Statistics"]
-git-tree-sha1 = "2e57b4a4f9cc15e85a24d603256fe08e527f48d1"
+git-tree-sha1 = "85d7fb51afb3def5dcb85ad31c3707795c8bccc1"
 uuid = "0c68f7d7-f131-5f86-a1c3-88cf8149b2d7"
-version = "8.8.1"
+version = "9.1.0"
 
 [[deps.GPUArraysCore]]
 deps = ["Adapt"]
@@ -1240,9 +1281,9 @@ version = "0.1.5"
 
 [[deps.GPUCompiler]]
 deps = ["ExprTools", "InteractiveUtils", "LLVM", "Libdl", "Logging", "Scratch", "TimerOutputs", "UUIDs"]
-git-tree-sha1 = "72b2e3c2ba583d1a7aa35129e56cf92e07c083e3"
+git-tree-sha1 = "5e4487558477f191c043166f8301dd0b4be4e2b2"
 uuid = "61eb1bfa-7361-4325-ad38-22787b887f55"
-version = "0.21.4"
+version = "0.24.5"
 
 [[deps.GR]]
 deps = ["Artifacts", "Base64", "DelimitedFiles", "Downloads", "GR_jll", "HTTP", "JSON", "Libdl", "LinearAlgebra", "Pkg", "Preferences", "Printf", "Random", "Serialization", "Sockets", "TOML", "Tar", "Test", "UUIDs", "p7zip_jll"]
@@ -1549,10 +1590,10 @@ uuid = "c31f79ba-6e32-46d4-a52f-182a8ac42a54"
 version = "0.2.3"
 
 [[deps.IntelOpenMP_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "ad37c091f7d7daf900963171600d7c1c5c3ede32"
+deps = ["Artifacts", "JLLWrappers", "Libdl"]
+git-tree-sha1 = "31d6adb719886d4e32e38197aae466e98881320b"
 uuid = "1d5cc7b8-4909-519e-a0f8-d0f5ad9712d0"
-version = "2023.2.0+0"
+version = "2024.0.0+0"
 
 [[deps.InteractiveUtils]]
 deps = ["Markdown"]
@@ -1878,10 +1919,10 @@ deps = ["Libdl", "OpenBLAS_jll", "libblastrampoline_jll"]
 uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
 [[deps.LinearSolve]]
-deps = ["ArrayInterface", "ConcreteStructs", "DocStringExtensions", "EnumX", "EnzymeCore", "FastLapackInterface", "GPUArraysCore", "InteractiveUtils", "KLU", "Krylov", "Libdl", "LinearAlgebra", "MKL", "MKL_jll", "PrecompileTools", "Preferences", "RecursiveFactorization", "Reexport", "Requires", "SciMLBase", "SciMLOperators", "Setfield", "SparseArrays", "Sparspak", "SuiteSparse", "UnPack"]
-git-tree-sha1 = "84bdad5fb1fe03a6637ad413e0e4b7e48ac22be5"
+deps = ["ArrayInterface", "ConcreteStructs", "DocStringExtensions", "EnumX", "EnzymeCore", "FastLapackInterface", "GPUArraysCore", "InteractiveUtils", "KLU", "Krylov", "Libdl", "LinearAlgebra", "MKL_jll", "PrecompileTools", "Preferences", "RecursiveFactorization", "Reexport", "Requires", "SciMLBase", "SciMLOperators", "Setfield", "SparseArrays", "Sparspak", "SuiteSparse", "UnPack"]
+git-tree-sha1 = "9f807ca41005f9a8f092716e48022ee5b36cf5b1"
 uuid = "7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"
-version = "2.16.2"
+version = "2.14.1"
 
     [deps.LinearSolve.extensions]
     LinearSolveBandedMatricesExt = "BandedMatrices"
@@ -2066,17 +2107,11 @@ git-tree-sha1 = "65f28ad4b594aebe22157d6fac869786a255b7eb"
 uuid = "6c6e2e6c-3030-632d-7369-2d6c69616d65"
 version = "0.1.4"
 
-[[deps.MKL]]
-deps = ["Artifacts", "Libdl", "LinearAlgebra", "MKL_jll"]
-git-tree-sha1 = "100521a1d2181cb39036ee1a6955d6b9686bb363"
-uuid = "33e6dc65-8f57-5167-99aa-e5a354878fb2"
-version = "0.6.1"
-
 [[deps.MKL_jll]]
-deps = ["Artifacts", "IntelOpenMP_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "Pkg"]
-git-tree-sha1 = "eb006abbd7041c28e0d16260e50a24f8f9104913"
+deps = ["Artifacts", "IntelOpenMP_jll", "JLLWrappers", "LazyArtifacts", "Libdl"]
+git-tree-sha1 = "72dc3cf284559eb8f53aa593fe62cb33f83ed0c0"
 uuid = "856f044c-d86e-5d09-b602-aeab76dc8ba7"
-version = "2023.2.0+0"
+version = "2024.0.0+0"
 
 [[deps.MLJModelInterface]]
 deps = ["Random", "ScientificTypesBase", "StatisticalTraits"]
@@ -2138,10 +2173,14 @@ uuid = "626554b9-1ddb-594c-aa3c-2596fe9399a5"
 version = "0.7.2"
 
 [[deps.Metal]]
-deps = ["Adapt", "Artifacts", "CEnum", "ExprTools", "GPUArrays", "GPUCompiler", "KernelAbstractions", "LLVM", "LinearAlgebra", "Metal_LLVM_Tools_jll", "ObjectFile", "ObjectiveC", "Printf", "Python_jll", "Random", "Reexport", "StaticArrays"]
-git-tree-sha1 = "e4eeaf2081a49a79fd83f8f9f8e339729e5f6a49"
+deps = ["Adapt", "Artifacts", "CEnum", "ExprTools", "GPUArrays", "GPUCompiler", "KernelAbstractions", "LLVM", "LinearAlgebra", "Metal_LLVM_Tools_jll", "ObjectFile", "ObjectiveC", "Printf", "Python_jll", "Random", "Reexport", "Requires", "StaticArrays"]
+git-tree-sha1 = "b696f1ad8bab7c53e022c0c3c226ed0f7ec2015e"
 uuid = "dde4c033-4e86-420c-a63e-0dd931031962"
-version = "0.5.0"
+version = "0.5.1"
+weakdeps = ["SpecialFunctions"]
+
+    [deps.Metal.extensions]
+    SpecialFunctionsExt = "SpecialFunctions"
 
 [[deps.Metal_LLVM_Tools_jll]]
 deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl", "TOML", "Zlib_jll"]
@@ -2264,9 +2303,9 @@ version = "1.0.0"
 
 [[deps.NearestNeighbors]]
 deps = ["Distances", "StaticArrays"]
-git-tree-sha1 = "2c3726ceb3388917602169bed973dbc97f1b51a8"
+git-tree-sha1 = "3ef8ff4f011295fd938a521cb605099cecf084ca"
 uuid = "b8a86587-4115-5ab1-83bc-aa920d37bbce"
-version = "0.4.13"
+version = "0.4.15"
 
 [[deps.Netpbm]]
 deps = ["FileIO", "ImageCore", "ImageMetadata"]
@@ -2297,10 +2336,10 @@ uuid = "d8793406-e978-5875-9003-1fc021f44a92"
 version = "0.4.1"
 
 [[deps.ObjectiveC]]
-deps = ["CEnum"]
-git-tree-sha1 = "5b3c98aacd5429e9c367e551134d9466e40ed6d5"
+deps = ["CEnum", "Preferences"]
+git-tree-sha1 = "9abcf85a7e05283fdac7fa0b2d46511f35c875ee"
 uuid = "e86c9b32-1129-44ac-8ea0-90d5bb39ded9"
-version = "0.1.0"
+version = "1.1.0"
 
 [[deps.OffsetArrays]]
 deps = ["Adapt"]
@@ -2392,6 +2431,12 @@ deps = ["Optim", "Optimization", "Reexport", "SparseArrays"]
 git-tree-sha1 = "bea24fb320d58cb639e3cbc63f8eedde6c667bd3"
 uuid = "36348300-93cb-4f02-beb5-3c3902f8871e"
 version = "0.1.14"
+
+[[deps.OptimizationOptimisers]]
+deps = ["Optimisers", "Optimization", "Printf", "ProgressLogging", "Reexport"]
+git-tree-sha1 = "69143c5e9b1533e9eab8d64cfe7813dfaf66c521"
+uuid = "42dfb2eb-d2b4-4451-abcd-913932933ac1"
+version = "0.1.6"
 
 [[deps.Opus_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -3312,10 +3357,10 @@ uuid = "ea10d353-3f73-51f8-a26c-33c1cb351aa5"
 version = "1.4.2"
 
 [[deps.WeightInitializers]]
-deps = ["PartialFunctions", "Random", "SpecialFunctions", "Statistics"]
-git-tree-sha1 = "d74c34f55608b88d6646a29b32de47cb1c1675aa"
+deps = ["PackageExtensionCompat", "PartialFunctions", "Random", "SpecialFunctions", "Statistics"]
+git-tree-sha1 = "f5c5118f3cd9a2ee5992d43d0a296caa671edea9"
 uuid = "d49dbf32-c5c2-4618-8acc-27bb2598ef2d"
-version = "0.1.2"
+version = "0.1.3"
 
     [deps.WeightInitializers.extensions]
     WeightInitializersCUDAExt = "CUDA"
@@ -3591,13 +3636,14 @@ version = "1.4.1+1"
 # ╟─7908b537-d671-43f7-8cd5-2f7f98471ca6
 # ╟─53c46c96-8696-4e5d-9f0c-53bf3fde3536
 # ╠═95a61d4e-dc1a-4088-b823-c75ca5c67134
+# ╠═09a77cd8-b464-4da5-aa59-3062b3611d2d
 # ╠═d4f91560-41ba-4a59-bb66-979824fd59e3
 # ╟─42a33248-5e9b-410c-99a8-95b0d6c1abaf
 # ╟─3c275a89-ed36-4d49-9176-138f53107642
 # ╟─63d1e788-efdb-4108-b36f-8a1c0b3c1d54
 # ╟─b4a37c55-7eed-468a-9aed-718708b23a3e
 # ╟─b74c74ef-925a-4f6e-85f5-eb0bf659dd84
-# ╟─18e6b647-7a2f-42c5-893e-7bdb42a7854a
+# ╠═18e6b647-7a2f-42c5-893e-7bdb42a7854a
 # ╟─9eac8440-8fa6-48b0-bc5a-e5873238bf9d
 # ╟─63ba7612-5d02-46ac-840a-5c8a0045829f
 # ╠═c1f45a4c-51be-4fa7-befb-890bec0bba03
@@ -3628,7 +3674,8 @@ version = "1.4.1+1"
 # ╟─1f47a417-e257-475c-848f-03d99433130f
 # ╟─fdb337e9-594f-4627-a7be-9c5708df9a61
 # ╟─ac54f07f-8389-410a-b373-cc4bffd51689
-# ╟─b5fc3107-9020-4b6c-8db8-cd8e46aad379
+# ╠═b5fc3107-9020-4b6c-8db8-cd8e46aad379
+# ╠═76b73750-81aa-44ae-9f2e-c67c5344c20c
 # ╟─b3e6d94a-0091-4853-950b-b213efca9d51
 # ╟─18d89e87-6275-4eb1-bccc-85e671aeb4a2
 # ╟─e614ad80-fa79-4065-86fa-b582426f5f4b
@@ -3637,8 +3684,12 @@ version = "1.4.1+1"
 # ╟─0c25b1a9-5b41-499b-815a-7a21667e9d62
 # ╟─5e7cb3b0-cd94-449b-b4ab-c09555e09c73
 # ╠═fbe48b8d-92c3-425b-ba91-63c00f837b1d
-# ╟─2690ade5-90a3-43bf-9c92-78423b84babb
-# ╟─01d8a09b-31e1-42e1-9afa-516c105d5321
+# ╠═2690ade5-90a3-43bf-9c92-78423b84babb
+# ╠═cf330eef-528d-48d6-ad6e-6c545793f13e
 # ╠═b823520f-d976-401b-ae9c-ad52286e4a6a
+# ╠═0c421ed1-0c58-4837-8519-ed16cedef764
+# ╠═fe9ef347-1603-4cda-8ce2-2b43282867fb
+# ╠═c97e555a-ed96-4a93-92a5-11ccd8fcb157
+# ╠═51f4ff69-0d6e-441f-9d17-85915bd3dc06
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
