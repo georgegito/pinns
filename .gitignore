@@ -1,11 +1,5 @@
 .vscode
-*todo.txt
-*digital_twins*
 *pycache*
-*csv_files*
-*ignore*
 *.csv
-*tips.jl
+*.STL
 .DS_Store
-src/julia/models/*
-src/julia/data/*

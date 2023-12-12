@@ -159,7 +159,7 @@ md"""
 p_tr_df = DataFrame(
 					x=p_sampled_df.x .- minimum(p_sampled_df.x), 
 					y=p_sampled_df.y .- minimum(p_sampled_df.y),
-					z=p_sampled_df.z .- minimum(p_sampled_df.x)
+					z=p_sampled_df.z .- minimum(p_sampled_df.z)
 )
 
 # ╔═╡ ce400c75-733f-4218-a781-cef75c9ca283
