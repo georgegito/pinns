@@ -161,7 +161,7 @@ class PINN(nn.Module):
                 torch.mean(torch.square(f2)) + \
                 torch.mean(torch.square(f3)) / 3
     
-    ic_loss = (ic_loss_u + ic_loss_v + ic_loss_p) / 3 
+    ic_loss = (ic_loss_u + ic_loss_v + ic_loss_w + ic_loss_p) / 3 
     
     bc_loss = (bc_loss_u + bc_loss_v + bc_loss_w) / 3
 
