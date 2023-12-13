@@ -130,10 +130,10 @@ class PINN(nn.Module):
     v_b_pred = output_boundary[:, 1]
     w_b_pred = output_boundary[:, 2]
 
-    # u = 1, v = 0 and w = 0 for x = 0
+    # u = 0, v = 1 and w = 0 for x = 0
 
-    u_b_true = torch.ones_like(u_b_pred) # TODO
-    v_b_true = torch.zeros_like(v_b_pred)
+    u_b_true = torch.zeros_like(u_b_pred) # TODO
+    v_b_true = torch.ones_like(v_b_pred)
     w_b_true = torch.zeros_like(w_b_pred)
     
     bc_loss_u = torch.mean(torch.square(u_b_pred - u_b_true))
