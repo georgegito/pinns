@@ -53,8 +53,11 @@ class PINN(nn.Module):
         x_f, y_f, z_f, t_f, 
         x0, y0, z0, t0, 
         x_b, y_b, z_b, t_b,
-        x_w, y_w, z_w, t_w,
-        mu, rho, dt, c1, c2, c3, c4, log_filepath):
+        x_w, y_w, z_w,
+        n_x, n_y, n_z, t_w,
+        in_velocity,
+        mu, rho, dt, c1, c2, c3, c4, c5,
+        log_filepath):
 
     xyzt_combinations = torch.cartesian_prod(x_f.flatten(), y_f.flatten(), z_f.flatten(), t_f.flatten())
     output = self(xyzt_combinations)
@@ -133,7 +136,7 @@ class PINN(nn.Module):
     # u = 0, v = -1 and w = 0 for x = 0
 
     u_b_true = torch.zeros_like(u_b_pred) # TODO
-    v_b_true = torch.full_like(v_b_pred, -1)
+    v_b_true = torch.full_like(v_b_pred, -1 * in_velocity)
     w_b_true = torch.zeros_like(w_b_pred)
     
     bc_loss_u = torch.mean(torch.square(u_b_pred - u_b_true))
@@ -141,20 +144,20 @@ class PINN(nn.Module):
     bc_loss_w = torch.mean(torch.square(w_b_pred - w_b_true))
 
     # Wing surface boundary conditions loss
-
     xyzt_combinations = torch.cartesian_prod(x_w.flatten(), y_w.flatten(), z_w.flatten(), t_w.flatten())
     output_wing = self(xyzt_combinations)
     u_w_pred = output_wing[:, 0]
     v_w_pred = output_wing[:, 1]
     w_w_pred = output_wing[:, 2]
 
-    u_w_true = torch.zeros_like(u_w_pred)
-    v_w_true = torch.zeros_like(v_w_pred)
-    w_w_true = torch.zeros_like(w_w_pred)
-    
-    wing_loss_u = torch.mean(torch.square(u_w_pred - u_w_true))
-    wing_loss_v = torch.mean(torch.square(v_w_pred - v_w_true))
-    wing_loss_w = torch.mean(torch.square(w_w_pred - w_w_true))
+    ## no-slip condition
+    no_slip_loss_u = torch.mean(torch.square(u_w_pred))
+    no_slip_loss_v = torch.mean(torch.square(v_w_pred))
+    no_slip_loss_w = torch.mean(torch.square(w_w_pred))
+
+    ## impermeability condition
+    imp_residual = u_w_pred * n_x + v_w_pred * n_y + w_w_pred * n_z
+    imp_loss = torch.mean(torch.square(imp_residual))
 
     # Combine PDE residual, initial condition, and boundary condition losses
     pde_loss =  torch.mean(torch.square(f1)) + \
@@ -165,13 +168,14 @@ class PINN(nn.Module):
     
     bc_loss = (bc_loss_u + bc_loss_v + bc_loss_w) / 3
 
-    wing_loss = (wing_loss_u + wing_loss_v + wing_loss_w) / 3
-
+    no_slip_loss = (no_slip_loss_u + no_slip_loss_v + no_slip_loss_w) / 3
+    
     total_loss =  c1 * pde_loss + \
                   c2 * ic_loss + \
                   c3 * bc_loss + \
-                  c4 * wing_loss
+                  c4 * no_slip_loss + \
+                  c5 * imp_loss
 
-    self.save_log(log_filepath, total_loss, pde_loss, ic_loss, bc_loss, wing_loss)
+    self.save_log(log_filepath, total_loss, pde_loss, ic_loss, bc_loss, no_slip_loss, imp_loss)
 
-    return total_loss, pde_loss, ic_loss, bc_loss, wing_loss
+    return total_loss, pde_loss, ic_loss, bc_loss, no_slip_loss, imp_loss
