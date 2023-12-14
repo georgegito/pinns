@@ -133,7 +133,7 @@ class PINN(nn.Module):
     # u = 0, v = -1 and w = 0 for x = 0
 
     u_b_true = torch.zeros_like(u_b_pred) # TODO
-    v_b_true = torch.full_like(-1, v_b_pred)
+    v_b_true = torch.full_like(v_b_pred, -1)
     w_b_true = torch.zeros_like(w_b_pred)
     
     bc_loss_u = torch.mean(torch.square(u_b_pred - u_b_true))
