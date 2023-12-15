@@ -3,4 +3,4 @@
 *.csv
 *.STL
 .DS_Store
-*.pt
+*/models/archive/*
