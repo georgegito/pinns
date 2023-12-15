@@ -3,6 +3,7 @@ import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
 import csv
+import utils
 
 class PINN(nn.Module):
   def __init__(self, input_dim, output_dim, hidden_units):
@@ -30,13 +31,14 @@ class PINN(nn.Module):
   def grad(self, x, y, create_graph=True):
     return torch.autograd.grad(x, y, grad_outputs=torch.ones_like(x), create_graph=create_graph, retain_graph=True, only_inputs=True)[0]
 
-  def save_log(self, log_filepath, total_loss, pde_loss, ic_loss, bc_loss, wing_loss):
+  def save_log(self, log_filepath, total_loss, pde_loss, ic_loss, bc_loss, wing_loss, imp_loss):
     new_row = {
       "total_loss": total_loss.item(),
       "pde_loss": pde_loss.item(),
       "ic_loss": ic_loss.item(),
       "bc_loss": bc_loss.item(),
-      "wing_loss": wing_loss.item()
+      "wing_loss": wing_loss.item(),
+      "imp_loss": imp_loss.item()
     }
 
     with open(log_filepath, 'a', newline='') as file:
@@ -50,8 +52,11 @@ class PINN(nn.Module):
       writer.writerow(new_row)
 
   def loss(self, 
-        input_f, 
-        input_0, 
+        x_f,
+        y_f,
+        z_f,
+        t_f,
+        input_0,
         input_b,
         input_w,
         normals_w,
@@ -59,16 +64,18 @@ class PINN(nn.Module):
         mu, rho, c1, c2, c3, c4, c5,
         log_filepath):
 
+    input_f = utils.stack_xyzt_tensors(x_f, y_f, z_f, t_f)
+
     output_f = self(input_f)
     u = output_f[:, 0]
     v = output_f[:, 1]
     w = output_f[:, 2]
     p = output_f[:, 3]
 
-    x_f = input_f[:, 0]
-    y_f = input_f[:, 1]
-    z_f = input_f[:, 2]
-    t_f = input_f[:, 3]
+    # x_f = input_f[:, 0]
+    # y_f = input_f[:, 1]
+    # z_f = input_f[:, 2]
+    # t_f = input_f[:, 3]
      
     u_t = self.grad(u, t_f)
     u_x = self.grad(u, x_f)
@@ -187,7 +194,7 @@ class PINN(nn.Module):
     # imp_residual = u_w_pred * n_x + v_w_pred * n_y + w_w_pred * n_z
 
     # imp_loss = torch.mean(torch.square(imp_residual))
-    imp_loss = 0
+    imp_loss = torch.tensor(0)
 
     # total loss
     total_loss =  c1 * pde_loss + \
