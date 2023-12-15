@@ -132,13 +132,13 @@ class PINN(nn.Module):
 
     # u = 0, v = -1 * in_velocity and w = 0 for y = 1
 
-    u_b_true = torch.zeros_like(u_b_pred) # TODO
+    # u_b_true = torch.zeros_like(u_b_pred) # TODO
     v_b_true = torch.full_like(v_b_pred, -1 * in_velocity)
-    w_b_true = torch.zeros_like(w_b_pred)
+    # w_b_true = torch.zeros_like(w_b_pred)
     
-    bc_loss_u = torch.mean(torch.square(u_b_pred - u_b_true))
+    bc_loss_u = torch.mean(torch.square(u_b_pred))
     bc_loss_v = torch.mean(torch.square(v_b_pred - v_b_true))
-    bc_loss_w = torch.mean(torch.square(w_b_pred - w_b_true))
+    bc_loss_w = torch.mean(torch.square(w_b_pred))
 
     bc_loss = (bc_loss_u + bc_loss_v + bc_loss_w) / 3
 
