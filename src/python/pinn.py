@@ -31,26 +31,6 @@ class PINN(nn.Module):
   def grad(self, x, y, create_graph=True):
     return torch.autograd.grad(x, y, grad_outputs=torch.ones_like(x), create_graph=create_graph, retain_graph=True, only_inputs=True)[0]
 
-  def save_log(self, log_filepath, total_loss, pde_loss, ic_loss, bc_loss, wing_loss, imp_loss):
-    new_row = {
-      "total_loss": total_loss.item(),
-      "pde_loss": pde_loss.item(),
-      "ic_loss": ic_loss.item(),
-      "bc_loss": bc_loss.item(),
-      "wing_loss": wing_loss.item(),
-      "imp_loss": imp_loss.item()
-    }
-
-    with open(log_filepath, 'a', newline='') as file:
-        
-      writer = csv.DictWriter(file, fieldnames=new_row.keys())
-      
-      file.seek(0, 2)
-      if file.tell() == 0:
-        writer.writeheader()
-      
-      writer.writerow(new_row)
-
   def loss(self, 
         x_f,
         y_f,
@@ -61,8 +41,7 @@ class PINN(nn.Module):
         input_w,
         normals_w,
         in_velocity,
-        mu, rho, c1, c2, c3, c4, c5,
-        log_filepath):
+        mu, rho, c1, c2, c3, c4, c5):
 
     input_f = utils.stack_xyzt_tensors(x_f, y_f, z_f, t_f)
 
@@ -202,7 +181,5 @@ class PINN(nn.Module):
                   c3 * bc_loss + \
                   c4 * no_slip_loss + \
                   c5 * imp_loss
-
-    self.save_log(log_filepath, total_loss, pde_loss, ic_loss, bc_loss, no_slip_loss, imp_loss)
 
     return total_loss, pde_loss, ic_loss, bc_loss, no_slip_loss, imp_loss
