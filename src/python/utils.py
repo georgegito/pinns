@@ -56,3 +56,12 @@ def load_checkpoint(model, optimizer, filepath):
         print("=> no checkpoint found at '{}'".format(filepath))
 
     return model, optimizer, start_epoch
+
+def sample_points_in_domain(_min, _max, num_of_samples):
+  return np.random.uniform(_min, _max, size=num_of_samples)
+
+def zeros(num):
+  return np.zeros(num)
+
+def ones(num):
+  return np.ones(num)
