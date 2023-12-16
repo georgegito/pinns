@@ -39,9 +39,8 @@ class PINN(nn.Module):
         input_0,
         input_b,
         input_w,
-        normals_w,
         in_velocity,
-        mu, rho, c1, c2, c3, c4, c5):
+        mu, rho, c1, c2, c3, c4):
 
     input_f = utils.stack_xyzt_tensors(x_f, y_f, z_f, t_f)
 
@@ -51,11 +50,6 @@ class PINN(nn.Module):
     w = output_f[:, 2]
     p = output_f[:, 3]
 
-    # x_f = input_f[:, 0]
-    # y_f = input_f[:, 1]
-    # z_f = input_f[:, 2]
-    # t_f = input_f[:, 3]
-     
     u_t = self.grad(u, t_f)
     u_x = self.grad(u, x_f)
     u_y = self.grad(u, y_f)
@@ -157,23 +151,13 @@ class PINN(nn.Module):
 
     no_slip_loss = (1/3) * (no_slip_loss_u + no_slip_loss_v + no_slip_loss_w)
 
-    # TODO
-    # ## impermeability condition
-    # print(u_w_pred.shape, n_x.shape)
-
-    # imp_residual = u_w_pred * n_x + v_w_pred * n_y + w_w_pred * n_z
-
-    # imp_loss = torch.mean(torch.square(imp_residual))
-    imp_loss = torch.tensor(0)
-
     # total loss
     total_loss =  c1 * pde_loss + \
                   c2 * ic_loss + \
                   c3 * bc_loss + \
-                  c4 * no_slip_loss + \
-                  c5 * imp_loss
+                  c4 * no_slip_loss
 
-    return total_loss, pde_loss, ic_loss, bc_loss, no_slip_loss, imp_loss
+    return total_loss, pde_loss, ic_loss, bc_loss, no_slip_loss
   
   def compute_b(self, u, v, w, t, u_x, u_y, u_z, v_x, v_y, v_z, w_x, w_y, w_z, rho):
     # u, v, w: velocity components
