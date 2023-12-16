@@ -87,19 +87,30 @@ class PINN(nn.Module):
     p_z = self.grad(p, z_f)
     p_zz = self.grad(p_z, z_f, False)
 
-    # b = rho * ( 1/dt * (u_x + v_y) - u_x**2 - 2*u_y*v_x - v_y**2)
+    b = self.compute_b(u=u, v=v, w=w, t=t_f, 
+                       u_x=u_x, u_y=u_y, u_z=u_z, 
+                       v_x=v_x, v_y=v_y, v_z=v_z, 
+                       w_x=w_x, w_y=w_y, w_z=w_z, 
+                       rho=rho)
 
+    # PDE loss
+    ## Navier-Stokes equations
+    ### X-momentum equation
     f1 = u_t + u*u_x + v*u_y + w*u_z + (1/rho) * p_x - mu * (u_xx + u_yy + u_zz)
+    ### Y-momentum equation
     f2 = v_t + u*v_x + v*v_y + w*v_z + (1/rho) * p_y - mu * (v_xx + v_yy + v_zz)
+    ### Z-momentum equation
     f3 = w_t + u*w_x + v*w_y + w*w_z + (1/rho) * p_z - mu * (w_xx + w_yy + w_zz)
-    f3 = u_x + v_y + w_z
+    ### Continuity equation
+    f4 = u_x + v_y + w_z
+    ### Poisson equation
+    f5 = p_xx + p_yy + p_zz - b
 
-    pde_loss =  torch.mean(torch.square(f1)) + \
-                torch.mean(torch.square(f2)) + \
-                torch.mean(torch.square(f3)) / 3
-
-    # TODO: add poisson equation
-    # f4 = p_xx + p_yy + p_zz - b
+    pde_loss =  (1/5) * torch.mean(torch.square(f1)) + \
+                        torch.mean(torch.square(f2)) + \
+                        torch.mean(torch.square(f3)) + \
+                        torch.mean(torch.square(f4)) + \
+                        torch.mean(torch.square(f5))
 
     # Initial condition loss
     output_0 = self(input_0)
@@ -109,51 +120,31 @@ class PINN(nn.Module):
     p0_pred = output_0[:, 3]
 
     # for t = 0 -> u, v, w = 0, p = 1
-
-    u0_true = torch.zeros_like(u0_pred)
-    v0_true = torch.zeros_like(v0_pred)
-    w0_true = torch.zeros_like(w0_pred)
     p0_true = torch.ones_like(p0_pred)
 
-    ic_loss_u = torch.mean(torch.square(u0_pred - u0_true))
-    ic_loss_v = torch.mean(torch.square(v0_pred - v0_true))
-    ic_loss_w = torch.mean(torch.square(w0_pred - w0_true))
+    ic_loss_u = torch.mean(torch.square(u0_pred))
+    ic_loss_v = torch.mean(torch.square(v0_pred))
+    ic_loss_w = torch.mean(torch.square(w0_pred))
     ic_loss_p = torch.mean(torch.square(p0_pred - p0_true))
 
-    ic_loss = (ic_loss_u + ic_loss_v + ic_loss_w + ic_loss_p) / 3
+    ic_loss = (1/4) * (ic_loss_u + ic_loss_v + ic_loss_w + ic_loss_p)
 
     # Boundary conditions loss
-
-    # xyzt_combinations = torch.cartesian_prod(x_b.flatten(), y_b.flatten(), z_b.flatten(), t_b.flatten()) # TODO
     output_b = self(input_b)
     u_b_pred = output_b[:, 0]
     v_b_pred = output_b[:, 1]
     w_b_pred = output_b[:, 2]
 
     # u = 0, v = -1 * in_velocity and w = 0 for y = 1
-
-    # u_b_true = torch.zeros_like(u_b_pred) # TODO
     v_b_true = torch.full_like(v_b_pred, -1 * in_velocity)
-    # w_b_true = torch.zeros_like(w_b_pred)
     
     bc_loss_u = torch.mean(torch.square(u_b_pred))
     bc_loss_v = torch.mean(torch.square(v_b_pred - v_b_true))
     bc_loss_w = torch.mean(torch.square(w_b_pred))
 
-    bc_loss = (bc_loss_u + bc_loss_v + bc_loss_w) / 3
+    bc_loss = (1/3) * (bc_loss_u + bc_loss_v + bc_loss_w)
 
     # Wing surface boundary conditions loss
-    
-    # xyzt_combinations = torch.cartesian_prod(x_w.flatten(), y_w.flatten(), z_w.flatten(), t_w.flatten()) # TODO
-
-    # xyz_stacked = torch.stack((x_w, y_w, z_w), dim=-1)
-
-    # print(xyz_stacked.shape)
-
-    # xyzt_combinations = torch.cartesian_prod(xyz_stacked, t_w)
-
-    # print(xyzt_combinations.shape)
-
     output_wing = self(input_w)
     u_w_pred = output_wing[:, 0]
     v_w_pred = output_wing[:, 1]
@@ -164,7 +155,7 @@ class PINN(nn.Module):
     no_slip_loss_v = torch.mean(torch.square(v_w_pred))
     no_slip_loss_w = torch.mean(torch.square(w_w_pred))
 
-    no_slip_loss = (no_slip_loss_u + no_slip_loss_v + no_slip_loss_w) / 3
+    no_slip_loss = (1/3) * (no_slip_loss_u + no_slip_loss_v + no_slip_loss_w)
 
     # TODO
     # ## impermeability condition
@@ -183,3 +174,22 @@ class PINN(nn.Module):
                   c5 * imp_loss
 
     return total_loss, pde_loss, ic_loss, bc_loss, no_slip_loss, imp_loss
+  
+  def compute_b(self, u, v, w, t, u_x, u_y, u_z, v_x, v_y, v_z, w_x, w_y, w_z, rho):
+    # u, v, w: velocity components
+    # u_t, v_t, w_t: time derivatives of the velocity components
+    # u_x, u_y, u_z, v_x, v_y, v_z, w_x, w_y, w_z: spatial derivatives of the velocity components
+    # rho: fluid density (either a constant or an array)
+
+    # Calculate the divergence of the velocity field
+    div_u = u_x + v_y + w_z
+
+    # Time derivative of the divergence of the velocity field
+    div_u_t = self.grad(div_u, t, create_graph=False)
+
+    # Convective acceleration term (tensor product of velocity gradient with its transpose)
+    convective_acc = (u * u_x + v * u_y + w * u_z +
+                      u * v_x + v * v_y + w * v_z +
+                      u * w_x + v * w_y + w * w_z)
+    
+    return rho * (div_u_t + convective_acc)
