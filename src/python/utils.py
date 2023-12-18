@@ -12,10 +12,10 @@ def stack_xyz_tensors(x, y, z):
 def tensor_from_array(arr, device, requires_grad):
   return torch.tensor(arr, device=device, requires_grad=requires_grad, dtype=torch.float32)
 
-def save_checkpoint(pinn, epoch, optimizer, filepath):
+def save_checkpoint(pinn, optimizer, filepath):
   print("=> saving checkpoint '{}'".format(filepath))
-  state = {'epoch': epoch, 'state_dict': pinn.state_dict(),
-             'optimizer': optimizer.state_dict()}
+  state = {'epoch': pinn.epoch, 'state_dict': pinn.state_dict(),
+             'optimizer': optimizer.state_dict(), "logs": pinn.logs}
   torch.save(state, filepath)
 
 def load_checkpoint(model, optimizer, filepath):
@@ -24,15 +24,16 @@ def load_checkpoint(model, optimizer, filepath):
     if os.path.isfile(filepath):
         print("=> loading checkpoint '{}'".format(filepath))
         checkpoint = torch.load(filepath)
-        start_epoch = checkpoint['epoch']
         model.load_state_dict(checkpoint['state_dict'])
+        model.epoch = checkpoint['epoch']
+        model.logs = checkpoint['logs']
         optimizer.load_state_dict(checkpoint['optimizer'])
         print("=> loaded checkpoint '{}' (epoch {})"
                   .format(filepath, checkpoint['epoch']))
     else:
         print("=> no checkpoint found at '{}'".format(filepath))
 
-    return model, optimizer, start_epoch
+    return model, optimizer
 
 def sample_points_in_domain(_min, _max, num_of_samples):
   return np.random.uniform(_min, _max, size=num_of_samples)

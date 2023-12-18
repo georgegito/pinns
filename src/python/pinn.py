@@ -24,7 +24,7 @@ class PINN(nn.Module):
     self.current_ic_loss = -1
     self.current_bc_loss = -1
     self.current_no_slip_loss = -1
-    self.epoch = 1
+    self.epoch = 0
 
   def forward(self, input):
     for layer in self.layers[:-1]:
@@ -275,7 +275,22 @@ class PINN(nn.Module):
                 f"No Slip Loss: {self.logs['no_slip_loss'][-1]:.4f}")
       else:
           print("No metrics to display.")
-  
+
+  def print_all_metrics(self):
+      """ Print all metrics """
+
+      for _epoch in range(1, self.epoch + 1): 
+      
+        if self.logs['total_loss']:
+            print(f"Epoch: {_epoch}, "
+                  f"Total Loss: {self.logs['total_loss'][_epoch - 1]:.4f}, "
+                  f"PDE Loss: {self.logs['pde_loss'][_epoch - 1]:.4f}, "
+                  f"IC Loss: {self.logs['ic_loss'][_epoch - 1]:.4f}, "
+                  f"BC Loss: {self.logs['bc_loss'][_epoch - 1]:.4f}, "
+                  f"No Slip Loss: {self.logs['no_slip_loss'][_epoch - 1]:.4f}")
+        else:
+            print("No metrics to display.")
+
   def train_pinn(self, epochs, 
             optimizer, wing_df,
             Nf, N0, Nb, Nw,
@@ -290,6 +305,9 @@ class PINN(nn.Module):
             log_out_dir):
     
     while self.epoch <= epochs:
+
+      self.epoch += 1
+
       optimizer.step(lambda: 
                     self.closure(
                       wing_df,
@@ -316,6 +334,4 @@ class PINN(nn.Module):
       #   continue
 
       if self.epoch % checkpoint_epochs == 0:
-        utils.save_checkpoint(self, self.epoch, optimizer, models_out_dir + filename + "_" + str(self.epoch) + ".pt")
-
-      self.epoch += 1
+        utils.save_checkpoint(self, optimizer, models_out_dir + filename + "_" + str(self.epoch) + ".pt")
