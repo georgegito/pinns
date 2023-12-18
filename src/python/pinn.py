@@ -18,6 +18,13 @@ class PINN(nn.Module):
     output_layer = nn.Linear(in_units, output_dim)
     nn.init.xavier_normal_(output_layer.weight)  # Apply Xavier initialization
     self.layers.append(output_layer)
+    self.logs = {"total_loss": [], "pde_loss": [], "ic_loss": [], "bc_loss": [], "no_slip_loss": []}
+    self.curent_total_loss = -1
+    self.current_pde_loss = -1
+    self.current_ic_loss = -1
+    self.current_bc_loss = -1
+    self.current_no_slip_loss = -1
+    self.epoch = 1
 
   def forward(self, input):
     for layer in self.layers[:-1]:
@@ -185,13 +192,12 @@ class PINN(nn.Module):
               x_max, y_max, z_max, t_max, 
               c1, c2, c3, c4, 
               in_velocity, 
-              mu, 
-              rho, 
+              mu, rho, 
               device):
 
     optimizer.zero_grad()
 
-    training_input = create_training_inputs(wing_df, x_max, y_max, z_max, t_max, Nf, N0, Nb, Nw, device)
+    training_input = self.create_training_inputs(wing_df, x_max, y_max, z_max, t_max, Nf, N0, Nb, Nw, device)
 
     total_loss, pde_loss, ic_loss, bc_loss, no_slip_loss = self.loss(
                     *training_input,
@@ -199,45 +205,117 @@ class PINN(nn.Module):
                     mu, rho,
                     c1=c1, c2=c2, c3=c3, c4=c4)
 
-    epoch_loss = [total_loss.item(), pde_loss.item(), ic_loss.item(), bc_loss.item(), no_slip_loss.item()]
+    self.current_total_loss = total_loss.item()
+    self.current_pde_loss = pde_loss.item()
+    self.current_ic_loss = ic_loss.item()
+    self.current_bc_loss = bc_loss.item()
+    self.current_no_slip_loss = no_slip_loss.item()
 
     total_loss.backward()
 
     return total_loss
 
-def create_training_inputs(wing_df, x_max, y_max, z_max, t_max, Nf, N0, Nb, Nw, device):
-  # TODO: use quasi monte carlo sampling
-  # collocation points
-  x_f = utils.tensor_from_array(utils.sample_points_in_domain(0, x_max, Nf), device=device, requires_grad=True)
-  y_f = utils.tensor_from_array(utils.sample_points_in_domain(0, y_max, Nf), device=device, requires_grad=True)
-  z_f = utils.tensor_from_array(utils.sample_points_in_domain(0, z_max, Nf), device=device, requires_grad=True)
-  t_f = utils.tensor_from_array(utils.sample_points_in_domain(0, t_max, Nf), device=device, requires_grad=True)
-  # xyzt_f = utils.stack_xyzt_tensors(x_f, y_f, z_f, t_f)
-  # if stacked in a single tensor, the gradients are not computed correctly
+  def create_training_inputs(self, wing_df, x_max, y_max, z_max, t_max, Nf, N0, Nb, Nw, device):
+    # TODO: use quasi monte carlo sampling
+    # collocation points
+    x_f = utils.tensor_from_array(utils.sample_points_in_domain(0, x_max, Nf), device=device, requires_grad=True)
+    y_f = utils.tensor_from_array(utils.sample_points_in_domain(0, y_max, Nf), device=device, requires_grad=True)
+    z_f = utils.tensor_from_array(utils.sample_points_in_domain(0, z_max, Nf), device=device, requires_grad=True)
+    t_f = utils.tensor_from_array(utils.sample_points_in_domain(0, t_max, Nf), device=device, requires_grad=True)
+    # xyzt_f = utils.stack_xyzt_tensors(x_f, y_f, z_f, t_f)
+    # if stacked in a single tensor, the gradients are not computed correctly
 
-  # initial condition points (t=0)
-  x0 = utils.tensor_from_array(utils.sample_points_in_domain(0, x_max, N0), device=device, requires_grad=False)
-  y0 = utils.tensor_from_array(utils.sample_points_in_domain(0, y_max, N0), device=device, requires_grad=False)
-  z0 = utils.tensor_from_array(utils.sample_points_in_domain(0, z_max, N0), device=device, requires_grad=False)
-  t0 = utils.tensor_from_array(utils.zeros(N0), device=device, requires_grad=False)
-  xyzt_0 = utils.stack_xyzt_tensors(x0, y0, z0, t0)
+    # initial condition points (t=0)
+    x0 = utils.tensor_from_array(utils.sample_points_in_domain(0, x_max, N0), device=device, requires_grad=False)
+    y0 = utils.tensor_from_array(utils.sample_points_in_domain(0, y_max, N0), device=device, requires_grad=False)
+    z0 = utils.tensor_from_array(utils.sample_points_in_domain(0, z_max, N0), device=device, requires_grad=False)
+    t0 = utils.tensor_from_array(utils.zeros(N0), device=device, requires_grad=False)
+    xyzt_0 = utils.stack_xyzt_tensors(x0, y0, z0, t0)
 
-  # boundary condition points (inflow, y=1)
-  x_b = utils.tensor_from_array(utils.sample_points_in_domain(0, x_max, Nb), device=device, requires_grad=False)
-  y_b = utils.tensor_from_array(utils.ones(Nb), device=device, requires_grad=False)
-  z_b = utils.tensor_from_array(utils.sample_points_in_domain(0, z_max, Nb), device=device, requires_grad=False)
-  t_b = utils.tensor_from_array(utils.sample_points_in_domain(0, t_max, Nb), device=device, requires_grad=False)
-  xyzt_b = utils.stack_xyzt_tensors(x_b, y_b, z_b, t_b)
+    # boundary condition points (inflow, y=1)
+    x_b = utils.tensor_from_array(utils.sample_points_in_domain(0, x_max, Nb), device=device, requires_grad=False)
+    y_b = utils.tensor_from_array(utils.ones(Nb), device=device, requires_grad=False)
+    z_b = utils.tensor_from_array(utils.sample_points_in_domain(0, z_max, Nb), device=device, requires_grad=False)
+    t_b = utils.tensor_from_array(utils.sample_points_in_domain(0, t_max, Nb), device=device, requires_grad=False)
+    xyzt_b = utils.stack_xyzt_tensors(x_b, y_b, z_b, t_b)
 
-  # points & normal vectors on the surface of the wing
-  ## sample Nw wing points with the corresponding normals
-  sampled_indices = wing_df.sample(n=Nw).index
+    # points & normal vectors on the surface of the wing
+    ## sample Nw wing points with the corresponding normals
+    sampled_indices = wing_df.sample(n=Nw).index
 
-  x_w, y_w, z_w = [utils.tensor_from_array(wing_df.loc[sampled_indices, col].values, device=device, requires_grad=False) for col in ['x', 'y', 'z']]
-  # n_x, n_y, n_z = [utils.tensor_from_array(norm_df.loc[sampled_indices, col].values, device=device, requires_grad=False) for col in ['x', 'y', 'z']]
-  t_w = utils.tensor_from_array(utils.sample_points_in_domain(0, t_max, Nw), device=device, requires_grad=False)
+    x_w, y_w, z_w = [utils.tensor_from_array(wing_df.loc[sampled_indices, col].values, device=device, requires_grad=False) for col in ['x', 'y', 'z']]
+    # n_x, n_y, n_z = [utils.tensor_from_array(norm_df.loc[sampled_indices, col].values, device=device, requires_grad=False) for col in ['x', 'y', 'z']]
+    t_w = utils.tensor_from_array(utils.sample_points_in_domain(0, t_max, Nw), device=device, requires_grad=False)
 
-  xyzt_w = utils.stack_xyzt_tensors(x_w, y_w, z_w, t_w)
-  # n_xyz = utils.stack_xyz_tensors(n_x, n_y, n_z)
+    xyzt_w = utils.stack_xyzt_tensors(x_w, y_w, z_w, t_w)
+    # n_xyz = utils.stack_xyz_tensors(n_x, n_y, n_z)
 
-  return (x_f, y_f, z_f, t_f, xyzt_0, xyzt_b, xyzt_w)
+    return (x_f, y_f, z_f, t_f, xyzt_0, xyzt_b, xyzt_w)
+
+  def log_metrics(self, total_loss, pde_loss, ic_loss, bc_loss, no_slip_loss):
+    """ Log training metrics """
+    self.logs['total_loss'].append(total_loss)
+    self.logs['pde_loss'].append(pde_loss)
+    self.logs['ic_loss'].append(ic_loss)
+    self.logs['bc_loss'].append(bc_loss)
+    self.logs['no_slip_loss'].append(no_slip_loss)
+
+  def get_logs(self):
+    """ Retrieve the logged metrics """
+    return self.logs
+
+  def print_current_metrics(self):
+      """ Print the most recent set of metrics """
+      if self.logs['total_loss']:
+          print(f"Epoch: {self.epoch}, "
+                f"Total Loss: {self.logs['total_loss'][-1]:.4f}, "
+                f"PDE Loss: {self.logs['pde_loss'][-1]:.4f}, "
+                f"IC Loss: {self.logs['ic_loss'][-1]:.4f}, "
+                f"BC Loss: {self.logs['bc_loss'][-1]:.4f}, "
+                f"No Slip Loss: {self.logs['no_slip_loss'][-1]:.4f}")
+      else:
+          print("No metrics to display.")
+  
+  def train_pinn(self, epochs, 
+            optimizer, wing_df,
+            Nf, N0, Nb, Nw,
+            x_max, y_max, z_max, t_max,
+            c1, c2, c3, c4,
+            in_velocity,
+            mu, rho,
+            device,
+            checkpoint_epochs,
+            models_out_dir,
+            filename,
+            log_out_dir):
+    
+    while self.epoch <= epochs:
+      optimizer.step(lambda: 
+                    self.closure(
+                      wing_df,
+                      optimizer, 
+                      Nf, N0, Nb, Nw, 
+                      x_max, y_max, z_max, t_max, 
+                      c1, c2, c3, c4, 
+                      in_velocity, 
+                      mu, 
+                      rho, 
+                      device))
+
+      self.log_metrics(self.current_total_loss, self.current_pde_loss, self.current_ic_loss, self.current_bc_loss, self.current_no_slip_loss)
+      self.print_current_metrics() 
+      
+      if np.isnan(self.current_total_loss):
+        print("=> NaN loss...")
+        exit(1)
+        # if self.epoch % checkpoint_epochs == 0:
+      #     pinn, optimizer, checkpoint_epoch = utils.load_checkpoint(pinn, optimizer, models_out_dir + filename + "_" + str(epoch - checkpoint_epochs) + ".pt")
+      #   else:
+      #     pinn, optimizer, checkpoint_epoch = utils.load_checkpoint(pinn, optimizer, models_out_dir + filename + "_" + str(epoch - (epoch % checkpoint_epochs)) + ".pt")
+      #   epoch = checkpoint_epoch + 1
+      #   continue
+
+      if self.epoch % checkpoint_epochs == 0:
+        utils.save_checkpoint(self, self.epoch, optimizer, models_out_dir + filename + "_" + str(self.epoch) + ".pt")
+
+      self.epoch += 1

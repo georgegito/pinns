@@ -12,29 +12,6 @@ def stack_xyz_tensors(x, y, z):
 def tensor_from_array(arr, device, requires_grad):
   return torch.tensor(arr, device=device, requires_grad=requires_grad, dtype=torch.float32)
 
-def save_log(log_filepath, epoch, epoch_loss):
-  new_row = {
-    "epoch": epoch,
-    "total_loss": epoch_loss[0],
-    "pde_loss": epoch_loss[1],
-    "ic_loss": epoch_loss[2],
-    "bc_loss": epoch_loss[3],
-    "no_slip_loss": epoch_loss[4]
-  }
-
-  with open(log_filepath, 'a', newline='') as file:
-
-    writer = csv.DictWriter(file, fieldnames=new_row.keys())
-
-    file.seek(0, 2)
-    if file.tell() == 0:
-      writer.writeheader()
-
-    writer.writerow(new_row)
-
-def print_log(epoch, epoch_loss):
-    print(f'Epoch: {epoch},\tTotal loss: {epoch_loss[0]},\tPDE loss: {epoch_loss[1]}\tIC loss: {epoch_loss[2]},\tBC loss: {epoch_loss[3]},\tNo-slip loss: {epoch_loss[4]}')
-
 def save_checkpoint(pinn, epoch, optimizer, filepath):
   print("=> saving checkpoint '{}'".format(filepath))
   state = {'epoch': epoch, 'state_dict': pinn.state_dict(),
