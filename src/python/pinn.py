@@ -100,7 +100,7 @@ class PINN(nn.Module):
     ### Poisson equation
     f5 = p_xx + p_yy + p_zz - b
 
-    pde_loss =  (1/5) * torch.mean(torch.square(f1)) + \
+    pde_loss =  100 * (1/5) * torch.mean(torch.square(f1)) + \
                         torch.mean(torch.square(f2)) + \
                         torch.mean(torch.square(f3)) + \
                         torch.mean(torch.square(f4)) + \
@@ -121,7 +121,7 @@ class PINN(nn.Module):
     ic_loss_w = torch.mean(torch.square(w0_pred))
     ic_loss_p = torch.mean(torch.square(p0_pred - p0_true))
 
-    ic_loss = (1/4) * (ic_loss_u + ic_loss_v + ic_loss_w + ic_loss_p)
+    ic_loss = 100 * (1/4) * (ic_loss_u + ic_loss_v + ic_loss_w + ic_loss_p)
 
     # Boundary conditions loss
     output_b = self(input_b)
@@ -136,7 +136,7 @@ class PINN(nn.Module):
     bc_loss_v = torch.mean(torch.square(v_b_pred - v_b_true))
     bc_loss_w = torch.mean(torch.square(w_b_pred))
 
-    bc_loss = (1/3) * (bc_loss_u + bc_loss_v + bc_loss_w)
+    bc_loss = 100 * (1/3) * (bc_loss_u + bc_loss_v + bc_loss_w)
 
     # Wing surface boundary conditions loss
     output_wing = self(input_w)
@@ -149,7 +149,7 @@ class PINN(nn.Module):
     no_slip_loss_v = torch.mean(torch.square(v_w_pred))
     no_slip_loss_w = torch.mean(torch.square(w_w_pred))
 
-    no_slip_loss = (1/3) * (no_slip_loss_u + no_slip_loss_v + no_slip_loss_w)
+    no_slip_loss = 100 * (1/3) * (no_slip_loss_u + no_slip_loss_v + no_slip_loss_w)
 
     # total loss
     total_loss =  c1 * pde_loss + \
