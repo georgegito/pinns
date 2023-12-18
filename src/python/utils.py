@@ -1,45 +1,25 @@
 import numpy as np
 import torch
-import csv
-import os
 
-def stack_xyzt_tensors(x, y, z, t):
+def stack_xyzt_tensors(x: torch.tensor, y: torch.tensor, z: torch.tensor, t: torch.tensor) -> torch.tensor:
   return torch.stack((x, y, z, t), axis=-1)
 
-def stack_xyz_tensors(x, y, z):
+def stack_xyz_tensors(x: torch.tensor, y: torch.tensor, z: torch.tensor) -> torch.tensor:
   return torch.stack((x, y, z), axis=-1)
 
-def tensor_from_array(arr, device, requires_grad):
+def tensor_from_array(arr: np.ndarray, device: torch.device, requires_grad: bool) -> torch.tensor:
   return torch.tensor(arr, device=device, requires_grad=requires_grad, dtype=torch.float32)
 
-def save_checkpoint(pinn, optimizer, filepath):
-  print("=> saving checkpoint '{}'".format(filepath))
-  state = {'epoch': pinn.epoch, 'state_dict': pinn.state_dict(),
-             'optimizer': optimizer.state_dict(), "logs": pinn.logs}
-  torch.save(state, filepath)
-
-def load_checkpoint(model, optimizer, filepath):
-    # Note: Input model & optimizer should be pre-defined.  This routine only updates their states.
-    start_epoch = 0
-    if os.path.isfile(filepath):
-        print("=> loading checkpoint '{}'".format(filepath))
-        checkpoint = torch.load(filepath)
-        model.load_state_dict(checkpoint['state_dict'])
-        model.epoch = checkpoint['epoch']
-        model.logs = checkpoint['logs']
-        optimizer.load_state_dict(checkpoint['optimizer'])
-        print("=> loaded checkpoint '{}' (epoch {})"
-                  .format(filepath, checkpoint['epoch']))
-    else:
-        print("=> no checkpoint found at '{}'".format(filepath))
-
-    return model, optimizer
-
-def sample_points_in_domain(_min, _max, num_of_samples):
+def sample_points_in_domain(_min, _max, num_of_samples) -> np.ndarray:
   return np.random.uniform(_min, _max, size=num_of_samples)
 
-def zeros(num):
+def zeros(num: int) -> np.ndarray:
   return np.zeros(num)
 
-def ones(num):
+def ones(num: int) -> np.ndarray:
   return np.ones(num)
+
+def set_optimizer_learning_rate(optimizer: torch.optim.Optimizer, learning_rate: float) -> float:
+  for param_group in optimizer.param_groups:
+    param_group['lr'] = learning_rate
+  return param_group['lr']

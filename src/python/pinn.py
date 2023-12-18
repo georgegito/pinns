@@ -1,12 +1,12 @@
 import torch
 import torch.nn as nn
 import numpy as np
-import matplotlib.pyplot as plt
-import csv
 import utils
+import os
+import pandas as pd
 
 class PINN(nn.Module):
-  def __init__(self, input_dim, output_dim, hidden_units):
+  def __init__(self, input_dim: int, output_dim: int, hidden_units: int, model_name: str):
     super(PINN, self).__init__()
     self.layers = nn.ModuleList()
     in_units = input_dim
@@ -25,8 +25,9 @@ class PINN(nn.Module):
     self.current_bc_loss = -1
     self.current_no_slip_loss = -1
     self.epoch = 0
+    self.model_name = model_name
 
-  def forward(self, input):
+  def forward(self, input: torch.Tensor) -> torch.Tensor:
     for layer in self.layers[:-1]:
       # output = torch.sigmoid(layer(input))
       output = torch.tanh(layer(input))
@@ -35,19 +36,22 @@ class PINN(nn.Module):
     output = self.layers[-1](input)
     return output
 
-  def grad(self, x, y, create_graph=True):
+  def grad(self, x: torch.Tensor, y: torch.Tensor, create_graph=True) -> torch.Tensor:
     return torch.autograd.grad(x, y, grad_outputs=torch.ones_like(x), create_graph=create_graph, retain_graph=True, only_inputs=True)[0]
 
-  def loss(self, 
-        x_f,
-        y_f,
-        z_f,
-        t_f,
-        input_0,
-        input_b,
-        input_w,
-        in_velocity,
-        mu, rho, c1, c2, c3, c4):
+  def loss(
+      self, 
+      x_f: torch.Tensor,
+      y_f: torch.Tensor,
+      z_f: torch.Tensor,
+      t_f: torch.Tensor,
+      input_0: torch.Tensor,
+      input_b: torch.Tensor,
+      input_w: torch.Tensor,
+      in_velocity: torch.Tensor,
+      mu: float, rho: float, 
+      c1: float, c2: float, c3: float, c4: float
+  ) -> torch.Tensor:
 
     input_f = utils.stack_xyzt_tensors(x_f, y_f, z_f, t_f)
 
@@ -166,7 +170,13 @@ class PINN(nn.Module):
 
     return total_loss, pde_loss, ic_loss, bc_loss, no_slip_loss
   
-  def compute_b(self, u, v, w, t, u_x, u_y, u_z, v_x, v_y, v_z, w_x, w_y, w_z, rho):
+  def compute_b(
+        self, 
+        u: torch.Tensor, v: torch.Tensor, w: torch.Tensor, t: torch.Tensor, 
+        u_x: torch.Tensor, u_y: torch.Tensor, u_z: torch.Tensor, 
+        v_x: torch.Tensor, v_y: torch.Tensor, v_z: torch.Tensor, 
+        w_x: torch.Tensor, w_y: torch.Tensor, w_z: torch.Tensor, 
+        rho: torch.Tensor) -> torch.Tensor:
     # u, v, w: velocity components
     # u_t, v_t, w_t: time derivatives of the velocity components
     # u_x, u_y, u_z, v_x, v_y, v_z, w_x, w_y, w_z: spatial derivatives of the velocity components
@@ -185,15 +195,17 @@ class PINN(nn.Module):
     
     return rho * (div_u_t + convective_acc)
   
-  def closure(self, 
-              wing_df,
-              optimizer, 
-              Nf, N0, Nb, Nw, 
-              x_max, y_max, z_max, t_max, 
-              c1, c2, c3, c4, 
-              in_velocity, 
-              mu, rho, 
-              device):
+  def closure(
+      self, 
+      wing_df: pd.DataFrame,
+      optimizer: torch.optim.Optimizer, 
+      Nf: int, N0: int, Nb: int, Nw: int, 
+      x_max: float, y_max: float, z_max: float, t_max: float, 
+      c1: float, c2: float, c3: float, c4: float, 
+      in_velocity: int, 
+      mu: float, rho: float, 
+      device: torch.device
+  ) -> torch.Tensor:
 
     optimizer.zero_grad()
 
@@ -215,7 +227,13 @@ class PINN(nn.Module):
 
     return total_loss
 
-  def create_training_inputs(self, wing_df, x_max, y_max, z_max, t_max, Nf, N0, Nb, Nw, device):
+  def create_training_inputs(
+        self, 
+        wing_df: pd.DataFrame, 
+        x_max: float, y_max: float, z_max: float, t_max: float, 
+        Nf: int, N0: int, Nb: int, Nw: int, 
+        device: torch.device) -> tuple:
+
     # TODO: use quasi monte carlo sampling
     # collocation points
     x_f = utils.tensor_from_array(utils.sample_points_in_domain(0, x_max, Nf), device=device, requires_grad=True)
@@ -252,7 +270,7 @@ class PINN(nn.Module):
 
     return (x_f, y_f, z_f, t_f, xyzt_0, xyzt_b, xyzt_w)
 
-  def log_metrics(self, total_loss, pde_loss, ic_loss, bc_loss, no_slip_loss):
+  def log_metrics(self, total_loss: float, pde_loss: float, ic_loss: float, bc_loss: float, no_slip_loss: float):
     """ Log training metrics """
     self.logs['total_loss'].append(total_loss)
     self.logs['pde_loss'].append(pde_loss)
@@ -272,7 +290,7 @@ class PINN(nn.Module):
                 f"PDE Loss: {self.logs['pde_loss'][-1]:.4f}, "
                 f"IC Loss: {self.logs['ic_loss'][-1]:.4f}, "
                 f"BC Loss: {self.logs['bc_loss'][-1]:.4f}, "
-                f"No Slip Loss: {self.logs['no_slip_loss'][-1]:.4f}")
+                f"No-Slip Loss: {self.logs['no_slip_loss'][-1]:.4f}")
       else:
           print("No metrics to display.")
 
@@ -291,19 +309,20 @@ class PINN(nn.Module):
         else:
             print("No metrics to display.")
 
-  def train_pinn(self, epochs, 
-            optimizer, wing_df,
-            Nf, N0, Nb, Nw,
-            x_max, y_max, z_max, t_max,
-            c1, c2, c3, c4,
-            in_velocity,
-            mu, rho,
-            device,
-            checkpoint_epochs,
-            models_out_dir,
-            filename,
-            log_out_dir):
-    
+  def train_pinn(
+        self, 
+        epochs: int, 
+        optimizer: torch.optim.Optimizer, 
+        wing_df: pd.DataFrame,
+        Nf: int, N0: int, Nb: int, Nw: int,
+        x_max: float, y_max: float, z_max: float, t_max: float,
+        c1: float, c2: float, c3: float, c4: float,
+        in_velocity: int,
+        mu: float, rho: float,
+        device: torch.device,
+        checkpoint_epochs: int,
+        model_dir: str):
+
     while self.epoch <= epochs:
 
       self.epoch += 1
@@ -325,13 +344,57 @@ class PINN(nn.Module):
       
       if np.isnan(self.current_total_loss):
         print("=> NaN loss...")
-        exit(1)
+        self, optimizer = self.load_last_checkpoint(optimizer, model_dir)
         # if self.epoch % checkpoint_epochs == 0:
-      #     pinn, optimizer, checkpoint_epoch = utils.load_checkpoint(pinn, optimizer, models_out_dir + filename + "_" + str(epoch - checkpoint_epochs) + ".pt")
+      #     pinn, optimizer, checkpoint_epoch = utils.load_checkpoint(pinn, optimizer, model_dir + filename + "_" + str(epoch - checkpoint_epochs) + ".pt")
       #   else:
-      #     pinn, optimizer, checkpoint_epoch = utils.load_checkpoint(pinn, optimizer, models_out_dir + filename + "_" + str(epoch - (epoch % checkpoint_epochs)) + ".pt")
+      #     pinn, optimizer, checkpoint_epoch = utils.load_checkpoint(pinn, optimizer, model_dir + filename + "_" + str(epoch - (epoch % checkpoint_epochs)) + ".pt")
       #   epoch = checkpoint_epoch + 1
-      #   continue
+        continue
 
       if self.epoch % checkpoint_epochs == 0:
-        utils.save_checkpoint(self, optimizer, models_out_dir + filename + "_" + str(self.epoch) + ".pt")
+        checkpoint_path = os.path.join(model_dir, self.model_name, str(self.epoch) + ".pt")
+        self.save_checkpoint(optimizer, checkpoint_path)
+
+  def save_checkpoint(self, optimizer: torch.optim.Optimizer, file_path: str):
+
+    print("=> saving checkpoint '{}'".format(file_path))
+    state = {'epoch': self.epoch, 'state_dict': self.state_dict(),
+              'optimizer': optimizer.state_dict(), "logs": self.logs}
+    torch.save(state, file_path)
+
+  def load_checkpoint(self, optimizer: torch.optim.Optimizer, file_path: str) -> 'PINN, torch.optim.Optimizer':
+      # Note: Input model & optimizer should be pre-defined.  This routine only updates their states.
+      if os.path.isfile(file_path):
+          print("=> loading checkpoint '{}'".format(file_path))
+          checkpoint = torch.load(file_path)
+          self.load_state_dict(checkpoint['state_dict'])
+          self.epoch = checkpoint['epoch']
+          self.logs = checkpoint['logs']
+          optimizer.load_state_dict(checkpoint['optimizer'])
+          print("=> loaded checkpoint '{}' (epoch {})"
+                    .format(file_path, checkpoint['epoch']))
+      else:
+          print("=> no checkpoint found at '{}'".format(file_path))
+
+      return self, optimizer
+
+  def load_last_checkpoint(self, optimizer: torch.optim.Optimizer, checkpoint_dir: str) -> 'PINN, torch.optim.Optimizer':
+
+    # Get a list of all files and directories in the specified directory
+    all_items = os.listdir(os.path.join(checkpoint_dir, self.model_name))
+
+    # Filter out directories, keep only files
+    checkpoint_files = [item for item in all_items if os.path.isfile(os.path.join(checkpoint_dir, self.model_name, item))]
+
+    # Sort the files by name
+    checkpoint_files.sort(reverse=True)
+
+    # Now, 'files' contains all files in the directory, sorted alphabetically
+    checkpoint_file_name = checkpoint_files[0]
+
+    checkpoint_file_path = os.path.join(checkpoint_dir, self.model_name, checkpoint_file_name)
+
+    self, optimizer = self.load_checkpoint(optimizer, checkpoint_file_path)
+
+    return self, optimizer
