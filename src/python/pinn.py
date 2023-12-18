@@ -6,6 +6,7 @@ import os
 import pandas as pd
 
 class PINN(nn.Module):
+
   def __init__(self, input_dim: int, output_dim: int, hidden_units: int, model_name: str):
     super(PINN, self).__init__()
     self.layers = nn.ModuleList()
@@ -27,6 +28,7 @@ class PINN(nn.Module):
     self.epoch = 0
     self.model_name = model_name
 
+
   def forward(self, input: torch.Tensor) -> torch.Tensor:
     for layer in self.layers[:-1]:
       # output = torch.sigmoid(layer(input))
@@ -36,8 +38,6 @@ class PINN(nn.Module):
     output = self.layers[-1](input)
     return output
 
-  def grad(self, x: torch.Tensor, y: torch.Tensor, create_graph=True) -> torch.Tensor:
-    return torch.autograd.grad(x, y, grad_outputs=torch.ones_like(x), create_graph=create_graph, retain_graph=True, only_inputs=True)[0]
 
   def loss(
       self, 
@@ -61,38 +61,38 @@ class PINN(nn.Module):
     w = output_f[:, 2]
     p = output_f[:, 3]
 
-    u_t = self.grad(u, t_f)
-    u_x = self.grad(u, x_f)
-    u_y = self.grad(u, y_f)
-    u_z = self.grad(u, z_f)
-    u_xx = self.grad(u_x, x_f, False)
-    u_yy = self.grad(u_y, y_f, False)
-    u_zz = self.grad(u_z, z_f, False)
+    u_t = utils.grad(u, t_f)
+    u_x = utils.grad(u, x_f)
+    u_y = utils.grad(u, y_f)
+    u_z = utils.grad(u, z_f)
+    u_xx = utils.grad(u_x, x_f, False)
+    u_yy = utils.grad(u_y, y_f, False)
+    u_zz = utils.grad(u_z, z_f, False)
 
-    v_t = self.grad(v, t_f)
-    v_x = self.grad(v, x_f)
-    v_y = self.grad(v, y_f)
-    v_z = self.grad(v, z_f)
-    v_xx = self.grad(v_x, x_f, False)
-    v_yy = self.grad(v_y, y_f, False)
-    v_zz = self.grad(v_z, z_f, False)
+    v_t = utils.grad(v, t_f)
+    v_x = utils.grad(v, x_f)
+    v_y = utils.grad(v, y_f)
+    v_z = utils.grad(v, z_f)
+    v_xx = utils.grad(v_x, x_f, False)
+    v_yy = utils.grad(v_y, y_f, False)
+    v_zz = utils.grad(v_z, z_f, False)
 
-    w_t = self.grad(w, t_f)
-    w_x = self.grad(w, x_f)
-    w_y = self.grad(w, y_f)
-    w_z = self.grad(w, z_f)
-    w_xx = self.grad(w_x, x_f, False)
-    w_yy = self.grad(w_y, y_f, False)
-    w_zz = self.grad(w_z, z_f, False)
+    w_t = utils.grad(w, t_f)
+    w_x = utils.grad(w, x_f)
+    w_y = utils.grad(w, y_f)
+    w_z = utils.grad(w, z_f)
+    w_xx = utils.grad(w_x, x_f, False)
+    w_yy = utils.grad(w_y, y_f, False)
+    w_zz = utils.grad(w_z, z_f, False)
 
-    p_x = self.grad(p, x_f)
-    p_xx = self.grad(p_x, x_f, False)
-    p_y = self.grad(p, y_f)
-    p_yy = self.grad(p_y, y_f, False)
-    p_z = self.grad(p, z_f)
-    p_zz = self.grad(p_z, z_f, False)
+    p_x = utils.grad(p, x_f)
+    p_xx = utils.grad(p_x, x_f, False)
+    p_y = utils.grad(p, y_f)
+    p_yy = utils.grad(p_y, y_f, False)
+    p_z = utils.grad(p, z_f)
+    p_zz = utils.grad(p_z, z_f, False)
 
-    b = self.compute_b(u=u, v=v, w=w, t=t_f, 
+    b = self.__compute_b(u=u, v=v, w=w, t=t_f, 
                        u_x=u_x, u_y=u_y, u_z=u_z, 
                        v_x=v_x, v_y=v_y, v_z=v_z, 
                        w_x=w_x, w_y=w_y, w_z=w_z, 
@@ -170,31 +170,7 @@ class PINN(nn.Module):
 
     return total_loss, pde_loss, ic_loss, bc_loss, no_slip_loss
   
-  def compute_b(
-        self, 
-        u: torch.Tensor, v: torch.Tensor, w: torch.Tensor, t: torch.Tensor, 
-        u_x: torch.Tensor, u_y: torch.Tensor, u_z: torch.Tensor, 
-        v_x: torch.Tensor, v_y: torch.Tensor, v_z: torch.Tensor, 
-        w_x: torch.Tensor, w_y: torch.Tensor, w_z: torch.Tensor, 
-        rho: torch.Tensor) -> torch.Tensor:
-    # u, v, w: velocity components
-    # u_t, v_t, w_t: time derivatives of the velocity components
-    # u_x, u_y, u_z, v_x, v_y, v_z, w_x, w_y, w_z: spatial derivatives of the velocity components
-    # rho: fluid density (either a constant or an array)
 
-    # Calculate the divergence of the velocity field
-    div_u = u_x + v_y + w_z
-
-    # Time derivative of the divergence of the velocity field
-    div_u_t = self.grad(div_u, t, create_graph=False)
-
-    # Convective acceleration term (tensor product of velocity gradient with its transpose)
-    convective_acc = (u * u_x + v * u_y + w * u_z +
-                      u * v_x + v * v_y + w * v_z +
-                      u * w_x + v * w_y + w * w_z)
-    
-    return rho * (div_u_t + convective_acc)
-  
   def closure(
       self, 
       wing_df: pd.DataFrame,
@@ -209,7 +185,7 @@ class PINN(nn.Module):
 
     optimizer.zero_grad()
 
-    training_input = self.create_training_inputs(wing_df, x_max, y_max, z_max, t_max, Nf, N0, Nb, Nw, device)
+    training_input = self.__create_training_inputs(wing_df, x_max, y_max, z_max, t_max, Nf, N0, Nb, Nw, device)
 
     total_loss, pde_loss, ic_loss, bc_loss, no_slip_loss = self.loss(
                     *training_input,
@@ -227,7 +203,81 @@ class PINN(nn.Module):
 
     return total_loss
 
-  def create_training_inputs(
+
+  def train_pinn(
+        self, 
+        epochs: int, 
+        optimizer: torch.optim.Optimizer, 
+        wing_df: pd.DataFrame,
+        Nf: int, N0: int, Nb: int, Nw: int,
+        x_max: float, y_max: float, z_max: float, t_max: float,
+        c1: float, c2: float, c3: float, c4: float,
+        in_velocity: int,
+        mu: float, rho: float,
+        device: torch.device,
+        checkpoint_epochs: int,
+        model_dir: str):
+
+    try:
+      while self.epoch <= epochs:
+
+        self.epoch += 1
+
+        optimizer.step(lambda: 
+                      self.closure(
+                        wing_df,
+                        optimizer, 
+                        Nf, N0, Nb, Nw, 
+                        x_max, y_max, z_max, t_max, 
+                        c1, c2, c3, c4, 
+                        in_velocity, 
+                        mu, 
+                        rho, 
+                        device))
+
+        self.__log_metrics(self.current_total_loss, self.current_pde_loss, self.current_ic_loss, self.current_bc_loss, self.current_no_slip_loss)
+        self.print_current_metrics() 
+        
+        if np.isnan(self.current_total_loss):
+          print("=> NaN loss...")
+          self, optimizer = self.load_last_checkpoint(optimizer, model_dir)
+          continue
+
+        if self.epoch % checkpoint_epochs == 0:
+          checkpoint_path = os.path.join(model_dir, self.model_name, str(self.epoch) + ".pt")
+          self.__save_checkpoint(optimizer, checkpoint_path)
+          
+    except KeyboardInterrupt:
+      print(f"Training stopped by user at epoch {self.epoch}.")
+      self.epoch -= 1
+
+
+  def __compute_b(
+        self, 
+        u: torch.Tensor, v: torch.Tensor, w: torch.Tensor, t: torch.Tensor, 
+        u_x: torch.Tensor, u_y: torch.Tensor, u_z: torch.Tensor, 
+        v_x: torch.Tensor, v_y: torch.Tensor, v_z: torch.Tensor, 
+        w_x: torch.Tensor, w_y: torch.Tensor, w_z: torch.Tensor, 
+        rho: torch.Tensor) -> torch.Tensor:
+    # u, v, w: velocity components
+    # u_t, v_t, w_t: time derivatives of the velocity components
+    # u_x, u_y, u_z, v_x, v_y, v_z, w_x, w_y, w_z: spatial derivatives of the velocity components
+    # rho: fluid density (either a constant or an array)
+
+    # Calculate the divergence of the velocity field
+    div_u = u_x + v_y + w_z
+
+    # Time derivative of the divergence of the velocity field
+    div_u_t = utils.grad(div_u, t, create_graph=False)
+
+    # Convective acceleration term (tensor product of velocity gradient with its transpose)
+    convective_acc = (u * u_x + v * u_y + w * u_z +
+                      u * v_x + v * v_y + w * v_z +
+                      u * w_x + v * w_y + w * w_z)
+    
+    return rho * (div_u_t + convective_acc)
+
+  def __create_training_inputs(
         self, 
         wing_df: pd.DataFrame, 
         x_max: float, y_max: float, z_max: float, t_max: float, 
@@ -270,7 +320,8 @@ class PINN(nn.Module):
 
     return (x_f, y_f, z_f, t_f, xyzt_0, xyzt_b, xyzt_w)
 
-  def log_metrics(self, total_loss: float, pde_loss: float, ic_loss: float, bc_loss: float, no_slip_loss: float):
+
+  def __log_metrics(self, total_loss: float, pde_loss: float, ic_loss: float, bc_loss: float, no_slip_loss: float):
     """ Log training metrics """
     self.logs['total_loss'].append(total_loss)
     self.logs['pde_loss'].append(pde_loss)
@@ -278,9 +329,11 @@ class PINN(nn.Module):
     self.logs['bc_loss'].append(bc_loss)
     self.logs['no_slip_loss'].append(no_slip_loss)
 
-  def get_logs(self):
+
+  def __get_logs(self):
     """ Retrieve the logged metrics """
     return self.logs
+
 
   def print_current_metrics(self):
       """ Print the most recent set of metrics """
@@ -293,6 +346,7 @@ class PINN(nn.Module):
                 f"No-Slip Loss: {self.logs['no_slip_loss'][-1]:.4f}")
       else:
           print("No metrics to display.")
+
 
   def print_all_metrics(self):
       """ Print all metrics """
@@ -309,62 +363,17 @@ class PINN(nn.Module):
         else:
             print("No metrics to display.")
 
-  def train_pinn(
-        self, 
-        epochs: int, 
-        optimizer: torch.optim.Optimizer, 
-        wing_df: pd.DataFrame,
-        Nf: int, N0: int, Nb: int, Nw: int,
-        x_max: float, y_max: float, z_max: float, t_max: float,
-        c1: float, c2: float, c3: float, c4: float,
-        in_velocity: int,
-        mu: float, rho: float,
-        device: torch.device,
-        checkpoint_epochs: int,
-        model_dir: str):
 
-    while self.epoch <= epochs:
-
-      self.epoch += 1
-
-      optimizer.step(lambda: 
-                    self.closure(
-                      wing_df,
-                      optimizer, 
-                      Nf, N0, Nb, Nw, 
-                      x_max, y_max, z_max, t_max, 
-                      c1, c2, c3, c4, 
-                      in_velocity, 
-                      mu, 
-                      rho, 
-                      device))
-
-      self.log_metrics(self.current_total_loss, self.current_pde_loss, self.current_ic_loss, self.current_bc_loss, self.current_no_slip_loss)
-      self.print_current_metrics() 
-      
-      if np.isnan(self.current_total_loss):
-        print("=> NaN loss...")
-        self, optimizer = self.load_last_checkpoint(optimizer, model_dir)
-        # if self.epoch % checkpoint_epochs == 0:
-      #     pinn, optimizer, checkpoint_epoch = utils.load_checkpoint(pinn, optimizer, model_dir + filename + "_" + str(epoch - checkpoint_epochs) + ".pt")
-      #   else:
-      #     pinn, optimizer, checkpoint_epoch = utils.load_checkpoint(pinn, optimizer, model_dir + filename + "_" + str(epoch - (epoch % checkpoint_epochs)) + ".pt")
-      #   epoch = checkpoint_epoch + 1
-        continue
-
-      if self.epoch % checkpoint_epochs == 0:
-        checkpoint_path = os.path.join(model_dir, self.model_name, str(self.epoch) + ".pt")
-        self.save_checkpoint(optimizer, checkpoint_path)
-
-  def save_checkpoint(self, optimizer: torch.optim.Optimizer, file_path: str):
+  def __save_checkpoint(self, optimizer: torch.optim.Optimizer, file_path: str):
 
     print("=> saving checkpoint '{}'".format(file_path))
     state = {'epoch': self.epoch, 'state_dict': self.state_dict(),
               'optimizer': optimizer.state_dict(), "logs": self.logs}
     torch.save(state, file_path)
 
-  def load_checkpoint(self, optimizer: torch.optim.Optimizer, file_path: str) -> 'PINN, torch.optim.Optimizer':
-      # Note: Input model & optimizer should be pre-defined.  This routine only updates their states.
+
+  def __load_checkpoint(self, optimizer: torch.optim.Optimizer, file_path: str) -> 'PINN, torch.optim.Optimizer':
+
       if os.path.isfile(file_path):
           print("=> loading checkpoint '{}'".format(file_path))
           checkpoint = torch.load(file_path)
@@ -378,6 +387,7 @@ class PINN(nn.Module):
           print("=> no checkpoint found at '{}'".format(file_path))
 
       return self, optimizer
+
 
   def load_last_checkpoint(self, optimizer: torch.optim.Optimizer, checkpoint_dir: str) -> 'PINN, torch.optim.Optimizer':
 
@@ -395,6 +405,12 @@ class PINN(nn.Module):
 
     checkpoint_file_path = os.path.join(checkpoint_dir, self.model_name, checkpoint_file_name)
 
-    self, optimizer = self.load_checkpoint(optimizer, checkpoint_file_path)
+    self, optimizer = self.__load_checkpoint(optimizer, checkpoint_file_path)
 
     return self, optimizer
+
+
+  def load_checkpoint_num(self, optimizer: torch.optim.Optimizer, checkpoint_dir, model_name: str, checkpoint_num) -> 'PINN, torch.optim.Optimizer':
+
+    file_path = os.path.join(checkpoint_dir, model_name, str(checkpoint_num) + ".pt")
+    return self.__load_checkpoint(optimizer, file_path)

@@ -4,3 +4,5 @@
 *.STL
 .DS_Store
 */models/archive/*
+*/models/v2/*
+*/models/v3/*

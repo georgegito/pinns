@@ -19,6 +19,9 @@ def zeros(num: int) -> np.ndarray:
 def ones(num: int) -> np.ndarray:
   return np.ones(num)
 
+def grad(x: torch.Tensor, y: torch.Tensor, create_graph=True) -> torch.Tensor:
+  return torch.autograd.grad(x, y, grad_outputs=torch.ones_like(x), create_graph=create_graph, retain_graph=True, only_inputs=True)[0]
+  
 def set_optimizer_learning_rate(optimizer: torch.optim.Optimizer, learning_rate: float) -> float:
   for param_group in optimizer.param_groups:
     param_group['lr'] = learning_rate
