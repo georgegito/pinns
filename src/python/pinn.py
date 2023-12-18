@@ -367,20 +367,24 @@ class PINN(nn.Module):
   def __save_checkpoint(self, optimizer: torch.optim.Optimizer, file_path: str):
 
     print("=> saving checkpoint '{}'".format(file_path))
-    state = {'epoch': self.epoch, 'state_dict': self.state_dict(),
+    state = {'name': self.model_name, 'epoch': self.epoch, 'state_dict': self.state_dict(),
               'optimizer': optimizer.state_dict(), "logs": self.logs}
     torch.save(state, file_path)
 
 
-  def __load_checkpoint(self, optimizer: torch.optim.Optimizer, file_path: str) -> 'PINN, torch.optim.Optimizer':
+  def __load_checkpoint(self, optimizer: torch.optim.Optimizer, file_path: str, mode='training') -> 'PINN, torch.optim.Optimizer':
 
       if os.path.isfile(file_path):
           print("=> loading checkpoint '{}'".format(file_path))
           checkpoint = torch.load(file_path)
           self.load_state_dict(checkpoint['state_dict'])
+          self.model_name = checkpoint['name']
           self.epoch = checkpoint['epoch']
           self.logs = checkpoint['logs']
-          optimizer.load_state_dict(checkpoint['optimizer'])
+          
+          if mode == 'training':
+            optimizer.load_state_dict(checkpoint['optimizer'])
+
           print("=> loaded checkpoint '{}' (epoch {})"
                     .format(file_path, checkpoint['epoch']))
       else:
@@ -410,7 +414,7 @@ class PINN(nn.Module):
     return self, optimizer
 
 
-  def load_checkpoint_num(self, optimizer: torch.optim.Optimizer, checkpoint_dir, model_name: str, checkpoint_num) -> 'PINN, torch.optim.Optimizer':
+  def load_checkpoint_num(self, optimizer: torch.optim.Optimizer, checkpoint_dir, model_name: str, checkpoint_num: int, mode='training') -> 'PINN, torch.optim.Optimizer':
 
     file_path = os.path.join(checkpoint_dir, model_name, str(checkpoint_num) + ".pt")
-    return self.__load_checkpoint(optimizer, file_path)
+    return self.__load_checkpoint(optimizer, file_path, mode)
