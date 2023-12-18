@@ -177,3 +177,67 @@ class PINN(nn.Module):
                       u * w_x + v * w_y + w * w_z)
     
     return rho * (div_u_t + convective_acc)
+  
+  def closure(self, 
+              wing_df,
+              optimizer, 
+              Nf, N0, Nb, Nw, 
+              x_max, y_max, z_max, t_max, 
+              c1, c2, c3, c4, 
+              in_velocity, 
+              mu, 
+              rho, 
+              device):
+
+    optimizer.zero_grad()
+
+    training_input = create_training_inputs(wing_df, x_max, y_max, z_max, t_max, Nf, N0, Nb, Nw, device)
+
+    total_loss, pde_loss, ic_loss, bc_loss, no_slip_loss = self.loss(
+                    *training_input,
+                    in_velocity,
+                    mu, rho,
+                    c1=c1, c2=c2, c3=c3, c4=c4)
+
+    epoch_loss = [total_loss.item(), pde_loss.item(), ic_loss.item(), bc_loss.item(), no_slip_loss.item()]
+
+    total_loss.backward()
+
+    return total_loss
+
+def create_training_inputs(wing_df, x_max, y_max, z_max, t_max, Nf, N0, Nb, Nw, device):
+  # TODO: use quasi monte carlo sampling
+  # collocation points
+  x_f = utils.tensor_from_array(utils.sample_points_in_domain(0, x_max, Nf), device=device, requires_grad=True)
+  y_f = utils.tensor_from_array(utils.sample_points_in_domain(0, y_max, Nf), device=device, requires_grad=True)
+  z_f = utils.tensor_from_array(utils.sample_points_in_domain(0, z_max, Nf), device=device, requires_grad=True)
+  t_f = utils.tensor_from_array(utils.sample_points_in_domain(0, t_max, Nf), device=device, requires_grad=True)
+  # xyzt_f = utils.stack_xyzt_tensors(x_f, y_f, z_f, t_f)
+  # if stacked in a single tensor, the gradients are not computed correctly
+
+  # initial condition points (t=0)
+  x0 = utils.tensor_from_array(utils.sample_points_in_domain(0, x_max, N0), device=device, requires_grad=False)
+  y0 = utils.tensor_from_array(utils.sample_points_in_domain(0, y_max, N0), device=device, requires_grad=False)
+  z0 = utils.tensor_from_array(utils.sample_points_in_domain(0, z_max, N0), device=device, requires_grad=False)
+  t0 = utils.tensor_from_array(utils.zeros(N0), device=device, requires_grad=False)
+  xyzt_0 = utils.stack_xyzt_tensors(x0, y0, z0, t0)
+
+  # boundary condition points (inflow, y=1)
+  x_b = utils.tensor_from_array(utils.sample_points_in_domain(0, x_max, Nb), device=device, requires_grad=False)
+  y_b = utils.tensor_from_array(utils.ones(Nb), device=device, requires_grad=False)
+  z_b = utils.tensor_from_array(utils.sample_points_in_domain(0, z_max, Nb), device=device, requires_grad=False)
+  t_b = utils.tensor_from_array(utils.sample_points_in_domain(0, t_max, Nb), device=device, requires_grad=False)
+  xyzt_b = utils.stack_xyzt_tensors(x_b, y_b, z_b, t_b)
+
+  # points & normal vectors on the surface of the wing
+  ## sample Nw wing points with the corresponding normals
+  sampled_indices = wing_df.sample(n=Nw).index
+
+  x_w, y_w, z_w = [utils.tensor_from_array(wing_df.loc[sampled_indices, col].values, device=device, requires_grad=False) for col in ['x', 'y', 'z']]
+  # n_x, n_y, n_z = [utils.tensor_from_array(norm_df.loc[sampled_indices, col].values, device=device, requires_grad=False) for col in ['x', 'y', 'z']]
+  t_w = utils.tensor_from_array(utils.sample_points_in_domain(0, t_max, Nw), device=device, requires_grad=False)
+
+  xyzt_w = utils.stack_xyzt_tensors(x_w, y_w, z_w, t_w)
+  # n_xyz = utils.stack_xyz_tensors(n_x, n_y, n_z)
+
+  return (x_f, y_f, z_f, t_f, xyzt_0, xyzt_b, xyzt_w)
