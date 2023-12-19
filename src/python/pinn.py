@@ -408,8 +408,8 @@ class PINN(nn.Module):
     # Filter out directories, keep only files
     checkpoint_files = [item for item in all_items if os.path.isfile(os.path.join(checkpoint_dir, self.model_name, item))]
 
-    # Sort the files by name
-    checkpoint_files.sort(reverse=True)
+    # Sort the files based on the numeric part of the file name
+    checkpoint_files.sort(key=lambda x: int(x.split('.')[0]), reverse=True)
 
     # Now, 'files' contains all files in the directory, sorted alphabetically
     checkpoint_file_name = checkpoint_files[0]
