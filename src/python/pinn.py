@@ -286,27 +286,32 @@ class PINN(nn.Module):
 
     # TODO: use quasi monte carlo 4d sampling (x, y, z, t)
     # collocation points
-    x_f = utils.tensor_from_array(utils.sample_points_in_domain(0, x_max, Nf), device=device, requires_grad=True)
-    y_f = utils.tensor_from_array(utils.sample_points_in_domain(0, y_max, Nf), device=device, requires_grad=True)
-    z_f = utils.tensor_from_array(utils.sample_points_in_domain(0, z_max, Nf), device=device, requires_grad=True)
-    t_f = utils.tensor_from_array(utils.sample_points_in_domain(0, t_max, Nf), device=device, requires_grad=True)
+    samples_f = utils.qmc_sample_points_in_domain_4d_space_time(_min=0, _max=x_max, _t_min=0, _t_max=t_max, num_samples=Nf)
+    x_f = utils.tensor_from_array(samples_f[0], device=device, requires_grad=True)
+    y_f = utils.tensor_from_array(samples_f[1], device=device, requires_grad=True)
+    z_f = utils.tensor_from_array(samples_f[2], device=device, requires_grad=True)
+    t_f = utils.tensor_from_array(samples_f[3], device=device, requires_grad=True)
     # xyzt_f = utils.stack_xyzt_tensors(x_f, y_f, z_f, t_f)
     # if stacked in a single tensor, the gradients are not computed correctly
 
     # TODO: use quasi monte carlo 3d sampling (x, y, z)
     # initial condition points (t=0)
-    x0 = utils.tensor_from_array(utils.sample_points_in_domain(0, x_max, N0), device=device, requires_grad=False)
-    y0 = utils.tensor_from_array(utils.sample_points_in_domain(0, y_max, N0), device=device, requires_grad=False)
-    z0 = utils.tensor_from_array(utils.sample_points_in_domain(0, z_max, N0), device=device, requires_grad=False)
+    samples_0 = utils.qmc_sample_points_in_domain_3d(_min=0, _max=x_max, num_samples=N0) # TODO: use y_max and z_max
+
+    x0 = utils.tensor_from_array(samples_0[0], device=device, requires_grad=False)
+    y0 = utils.tensor_from_array(samples_0[1], device=device, requires_grad=False)
+    z0 = utils.tensor_from_array(samples_0[2], device=device, requires_grad=False)
     t0 = utils.tensor_from_array(utils.zeros(N0), device=device, requires_grad=False)
     xyzt_0 = utils.stack_xyzt_tensors(x0, y0, z0, t0)
 
     # TODO: use quasi monte carlo 3d sampling (x, z, t)
     # boundary condition points (inflow, y=1)
-    x_b = utils.tensor_from_array(utils.sample_points_in_domain(0, x_max, Nb), device=device, requires_grad=False)
+    samples_b = utils.qmc_sample_points_in_domain_3d_space_time(_min=0, _max=x_max, _t_min=0, _t_max=t_max, num_samples=Nb) # TODO: use y_max and z_max
+
+    x_b = utils.tensor_from_array(samples_b[0], device=device, requires_grad=False)
     y_b = utils.tensor_from_array(utils.ones(Nb), device=device, requires_grad=False)
-    z_b = utils.tensor_from_array(utils.sample_points_in_domain(0, z_max, Nb), device=device, requires_grad=False)
-    t_b = utils.tensor_from_array(utils.sample_points_in_domain(0, t_max, Nb), device=device, requires_grad=False)
+    z_b = utils.tensor_from_array(samples_b[1], device=device, requires_grad=False)
+    t_b = utils.tensor_from_array(samples_b[2], device=device, requires_grad=False)
     xyzt_b = utils.stack_xyzt_tensors(x_b, y_b, z_b, t_b)
 
     # points & normal vectors on the surface of the wing
