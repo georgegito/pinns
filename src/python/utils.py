@@ -59,7 +59,7 @@ def qmc_sample_points_in_domain_3d_space_time(_min: float, _max: float, _t_min: 
   y = samples[:, 1]
   t = samples[:, 2]
   
-  return x, y, z, t
+  return x, y, t
 
 def qmc_sample_points_in_domain_4d_space_time(_min: float, _max: float, _t_min: float, _t_max: float, num_samples: int) -> np.ndarray:
   sobol = Sobol(d=4)  # 4 dimensions (3 spatial + 1 temporal)
