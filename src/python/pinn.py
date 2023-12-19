@@ -284,7 +284,7 @@ class PINN(nn.Module):
         Nf: int, N0: int, Nb: int, Nw: int, 
         device: torch.device) -> tuple:
 
-    # TODO: use quasi monte carlo sampling
+    # TODO: use quasi monte carlo 4d sampling (x, y, z, t)
     # collocation points
     x_f = utils.tensor_from_array(utils.sample_points_in_domain(0, x_max, Nf), device=device, requires_grad=True)
     y_f = utils.tensor_from_array(utils.sample_points_in_domain(0, y_max, Nf), device=device, requires_grad=True)
@@ -293,6 +293,7 @@ class PINN(nn.Module):
     # xyzt_f = utils.stack_xyzt_tensors(x_f, y_f, z_f, t_f)
     # if stacked in a single tensor, the gradients are not computed correctly
 
+    # TODO: use quasi monte carlo 3d sampling (x, y, z)
     # initial condition points (t=0)
     x0 = utils.tensor_from_array(utils.sample_points_in_domain(0, x_max, N0), device=device, requires_grad=False)
     y0 = utils.tensor_from_array(utils.sample_points_in_domain(0, y_max, N0), device=device, requires_grad=False)
@@ -300,6 +301,7 @@ class PINN(nn.Module):
     t0 = utils.tensor_from_array(utils.zeros(N0), device=device, requires_grad=False)
     xyzt_0 = utils.stack_xyzt_tensors(x0, y0, z0, t0)
 
+    # TODO: use quasi monte carlo 3d sampling (x, z, t)
     # boundary condition points (inflow, y=1)
     x_b = utils.tensor_from_array(utils.sample_points_in_domain(0, x_max, Nb), device=device, requires_grad=False)
     y_b = utils.tensor_from_array(utils.ones(Nb), device=device, requires_grad=False)
