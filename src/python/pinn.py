@@ -218,6 +218,15 @@ class PINN(nn.Module):
         checkpoint_epochs: int,
         model_dir: str):
 
+    print("Converting Nf, N0, Nb, Ns to nearest power of 2...") # Quasi - Monte Carlo sampling requirement
+
+    Nf = utils.nearest_power_of_2(Nf)
+    N0 = utils.nearest_power_of_2(N0)
+    Nb = utils.nearest_power_of_2(Nb)
+    Ns = utils.nearest_power_of_2(Ns)
+
+    print(f"Nf: {Nf}, N0: {N0}, Nb: {Nb}, Ns: {Ns}")
+
     try:
       while self.epoch <= epochs:
 

@@ -152,3 +152,7 @@ def set_optimizer_learning_rate(optimizer: torch.optim.Optimizer, learning_rate:
   for param_group in optimizer.param_groups:
     param_group['lr'] = learning_rate
   return param_group['lr']
+
+
+def nearest_power_of_2(n):
+    return 2 ** round(np.log2(n))
