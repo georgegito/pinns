@@ -18,8 +18,16 @@ def sample_points_in_domain(_min: float, _max: float, num_samples: int) -> np.nd
   return np.random.uniform(_min, _max, size=num_samples)
 
 
-def sample_points_in_domain_3d(_min: float, _max: float, num_samples: int) -> np.ndarray:
-  samples = np.random.uniform(_min, _max, size=(num_samples, 3))
+def sample_points_in_domain_3d(_x_min: float, _x_max: float, 
+                               _y_min: float, _y_max: float, 
+                               _z_min: float, _z_max: float, 
+                               num_samples: int) -> np.ndarray:
+  samples = np.random.uniform(0, 1, size=(num_samples, 3))
+
+  # Apply domain transformations for space
+  samples[:, 0] = _x_min + (_x_max - _x_min) * samples[:, 0]
+  samples[:, 1] = _y_min + (_y_max - _y_min) * samples[:, 1]
+  samples[:, 2] = _z_min + (_z_max - _z_min) * samples[:, 2]
 
   x = samples[:, 0]
   y = samples[:, 1]
@@ -27,36 +35,41 @@ def sample_points_in_domain_3d(_min: float, _max: float, num_samples: int) -> np
 
   return x, y, z
 
+def sample_points_in_domain_4d_space_time(_x_min: float, _x_max: float, 
+                                          _y_min: float, _y_max: float, 
+                                          _z_min: float, _z_max: float, 
+                                          _t_min: float, _t_max: float, 
+                                          num_samples: int) -> np.ndarray:
+  # Generate samples for the spatial dimensions
+  samples = np.random.uniform(0, 1, size=(num_samples, 4))
 
-def sample_points_in_domain_3d(_min: float, _max: float, num_samples: int) -> np.ndarray:
-  samples = np.random.uniform(_min, _max, size=(num_samples, 3))
+  # Apply domain transformations for space
+  samples[:, 0] = _x_min + (_x_max - _x_min) * samples[:, 0]
+  samples[:, 1] = _y_min + (_y_max - _y_min) * samples[:, 1]
+  samples[:, 2] = _z_min + (_z_max - _z_min) * samples[:, 2]
+
+  # Apply domain transformations for space
+  samples[:, 3] = _t_min + (_t_max - _t_min) * samples[:, 3]
 
   x = samples[:, 0]
   y = samples[:, 1]
   z = samples[:, 2]
+  t = samples[:, 3]
 
-  return x, y, z
+  return x, y, z, t
 
-def sample_points_in_domain_4d_space_time(_min: float, _max: float, _t_min: float, _t_max: float, num_samples: int) -> np.ndarray:
-    # Generate samples for the spatial dimensions
-    spatial_samples = np.random.uniform(_min, _max, size=(num_samples, 3))
 
-    # Generate samples for the temporal dimension
-    time_samples = np.random.uniform(_t_min, _t_max, size=num_samples)
-
-    # Split spatial samples into x, y, z
-    x = spatial_samples[:, 0]
-    y = spatial_samples[:, 1]
-    z = spatial_samples[:, 2]
-    t = time_samples
-
-    return x, y, z, t
-
-def qmc_sample_points_in_domain_3d(_min: float, _max: float, num_samples: int) -> np.ndarray:
+def qmc_sample_points_in_domain_3d(_x_min: float, _x_max: float, 
+                                   _y_min: float, _y_max: float, 
+                                   _z_min: float, _z_max: float, 
+                                   num_samples: int) -> np.ndarray:
   sobol = Sobol(d=3)  # 3 dimensions
   samples = sobol.random_base2(m=int(np.log2(num_samples)))
 
-  samples = _min + (_max - _min) * samples
+  # Apply domain transformations for space
+  samples[:, 0] = _x_min + (_x_max - _x_min) * samples[:, 0]
+  samples[:, 1] = _y_min + (_y_max - _y_min) * samples[:, 1]
+  samples[:, 2] = _z_min + (_z_max - _z_min) * samples[:, 2]
 
   x = samples[:, 0]
   y = samples[:, 1]
@@ -65,13 +78,16 @@ def qmc_sample_points_in_domain_3d(_min: float, _max: float, num_samples: int) -
   return x, y, z
 
 
-def qmc_sample_points_in_domain_3d_space_time(_min: float, _max: float, _t_min: float, _t_max: float, num_samples: int) -> np.ndarray:
+def qmc_sample_points_in_domain_3d_space_time(_x_min: float, _x_max: float, 
+                                              _y_min: float, _y_max: float, 
+                                              _t_min: float, _t_max: float, 
+                                              num_samples: int) -> np.ndarray:
   sobol = Sobol(d=3)  # 3 dimensions (2 spatial + 1 temporal)
   samples = sobol.random_base2(m=int(np.log2(num_samples)))
 
   # Apply domain transformations for space
-  for i in range(2):  # For x, y
-    samples[:, i] = _min + (_max - _min) * samples[:, i]
+  samples[:, 0] = _x_min + (_x_max - _x_min) * samples[:, 0]
+  samples[:, 1] = _y_min + (_y_max - _y_min) * samples[:, 1]
 
   # Apply domain transformation for time
   samples[:, 2] = _t_min + (_t_max - _t_min) * samples[:, 2]
@@ -83,13 +99,18 @@ def qmc_sample_points_in_domain_3d_space_time(_min: float, _max: float, _t_min: 
   return x, y, t
 
 
-def qmc_sample_points_in_domain_4d_space_time(_min: float, _max: float, _t_min: float, _t_max: float, num_samples: int) -> np.ndarray:
+def qmc_sample_points_in_domain_4d_space_time(_x_min: float, _x_max: float,
+                                              _y_min: float, _y_max: float, 
+                                              _z_min: float, _z_max: float, 
+                                              _t_min: float, _t_max: float, 
+                                              num_samples: int) -> np.ndarray:
   sobol = Sobol(d=4)  # 4 dimensions (3 spatial + 1 temporal)
   samples = sobol.random_base2(m=int(np.log2(num_samples)))
 
   # Apply domain transformations for space
-  for i in range(3):  # For x, y, z
-    samples[:, i] = _min + (_max - _min) * samples[:, i]
+  samples[:, 0] = _x_min + (_x_max - _x_min) * samples[:, 0]
+  samples[:, 1] = _y_min + (_y_max - _y_min) * samples[:, 1]
+  samples[:, 2] = _z_min + (_z_max - _z_min) * samples[:, 2]
 
   # Apply domain transformation for time
   samples[:, 3] = _t_min + (_t_max - _t_min) * samples[:, 3]

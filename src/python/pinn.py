@@ -47,7 +47,7 @@ class PINN(nn.Module):
       t_f: torch.Tensor,
       input_0: torch.Tensor,
       input_b: torch.Tensor,
-      input_w: torch.Tensor,
+      input_s: torch.Tensor,
       in_velocity: torch.Tensor,
       mu: float, rho: float, 
       c1: float, c2: float, c3: float, c4: float
@@ -149,16 +149,16 @@ class PINN(nn.Module):
 
     bc_loss = 100 * (1/3) * (bc_loss_u + bc_loss_v + bc_loss_w)
 
-    # Wing surface boundary conditions loss
-    output_wing = self(input_w)
-    u_w_pred = output_wing[:, 0]
-    v_w_pred = output_wing[:, 1]
-    w_w_pred = output_wing[:, 2]
+    # Object surface boundary conditions loss
+    output_s = self(input_s)
+    u_s_pred = output_s[:, 0]
+    v_s_pred = output_s[:, 1]
+    w_s_pred = output_s[:, 2]
 
     ## no-slip condition
-    no_slip_loss_u = torch.mean(torch.square(u_w_pred))
-    no_slip_loss_v = torch.mean(torch.square(v_w_pred))
-    no_slip_loss_w = torch.mean(torch.square(w_w_pred))
+    no_slip_loss_u = torch.mean(torch.square(u_s_pred))
+    no_slip_loss_v = torch.mean(torch.square(v_s_pred))
+    no_slip_loss_w = torch.mean(torch.square(w_s_pred))
 
     no_slip_loss = 100 * (1/3) * (no_slip_loss_u + no_slip_loss_v + no_slip_loss_w)
 
@@ -173,9 +173,9 @@ class PINN(nn.Module):
 
   def closure(
       self, 
-      wing_df: pd.DataFrame,
+      s_df: pd.DataFrame,
       optimizer: torch.optim.Optimizer, 
-      Nf: int, N0: int, Nb: int, Nw: int, 
+      Nf: int, N0: int, Nb: int, Ns: int, 
       x_max: float, y_max: float, z_max: float, t_max: float, 
       c1: float, c2: float, c3: float, c4: float, 
       in_velocity: int, 
@@ -185,7 +185,7 @@ class PINN(nn.Module):
 
     optimizer.zero_grad()
 
-    training_input = self.__create_training_inputs(wing_df, x_max, y_max, z_max, t_max, Nf, N0, Nb, Nw, device)
+    training_input = self.__create_training_inputs(s_df, x_max, y_max, z_max, t_max, Nf, N0, Nb, Ns, device)
 
     total_loss, pde_loss, ic_loss, bc_loss, no_slip_loss = self.loss(
                     *training_input,
@@ -208,8 +208,8 @@ class PINN(nn.Module):
         self, 
         epochs: int, 
         optimizer: torch.optim.Optimizer, 
-        wing_df: pd.DataFrame,
-        Nf: int, N0: int, Nb: int, Nw: int,
+        s_df: pd.DataFrame,
+        Nf: int, N0: int, Nb: int, Ns: int,
         x_max: float, y_max: float, z_max: float, t_max: float,
         c1: float, c2: float, c3: float, c4: float,
         in_velocity: int,
@@ -225,9 +225,9 @@ class PINN(nn.Module):
 
         optimizer.step(lambda: 
                       self.closure(
-                        wing_df,
+                        s_df,
                         optimizer, 
-                        Nf, N0, Nb, Nw, 
+                        Nf, N0, Nb, Ns, 
                         x_max, y_max, z_max, t_max, 
                         c1, c2, c3, c4, 
                         in_velocity, 
@@ -279,14 +279,17 @@ class PINN(nn.Module):
 
   def __create_training_inputs(
         self, 
-        wing_df: pd.DataFrame, 
+        s_df: pd.DataFrame, 
         x_max: float, y_max: float, z_max: float, t_max: float, 
-        Nf: int, N0: int, Nb: int, Nw: int, 
+        Nf: int, N0: int, Nb: int, Ns: int, 
         device: torch.device) -> tuple:
 
-    # TODO: use quasi monte carlo 4d sampling (x, y, z, t)
     # collocation points
-    samples_f = utils.qmc_sample_points_in_domain_4d_space_time(_min=0, _max=x_max, _t_min=0, _t_max=t_max, num_samples=Nf)
+    samples_f = utils.qmc_sample_points_in_domain_4d_space_time(_x_min=0, _x_max=x_max, 
+                                                                _y_min=0, _y_max=y_max, 
+                                                                _z_min=0, _z_max=y_max, 
+                                                                _t_min=0, _t_max=t_max, 
+                                                                num_samples=Nf)
     x_f = utils.tensor_from_array(samples_f[0], device=device, requires_grad=True)
     y_f = utils.tensor_from_array(samples_f[1], device=device, requires_grad=True)
     z_f = utils.tensor_from_array(samples_f[2], device=device, requires_grad=True)
@@ -294,9 +297,11 @@ class PINN(nn.Module):
     # xyzt_f = utils.stack_xyzt_tensors(x_f, y_f, z_f, t_f)
     # if stacked in a single tensor, the gradients are not computed correctly
 
-    # TODO: use quasi monte carlo 3d sampling (x, y, z)
     # initial condition points (t=0)
-    samples_0 = utils.qmc_sample_points_in_domain_3d(_min=0, _max=x_max, num_samples=N0) # TODO: use y_max and z_max
+    samples_0 = utils.qmc_sample_points_in_domain_3d(_x_min=0, _x_max=x_max, 
+                                                     _y_min=0, _y_max=y_max, 
+                                                     _z_min=0, _z_max=z_max, 
+                                                     num_samples=N0)
 
     x0 = utils.tensor_from_array(samples_0[0], device=device, requires_grad=False)
     y0 = utils.tensor_from_array(samples_0[1], device=device, requires_grad=False)
@@ -304,28 +309,29 @@ class PINN(nn.Module):
     t0 = utils.tensor_from_array(utils.zeros(N0), device=device, requires_grad=False)
     xyzt_0 = utils.stack_xyzt_tensors(x0, y0, z0, t0)
 
-    # TODO: use quasi monte carlo 3d sampling (x, z, t)
     # boundary condition points (inflow, y=1)
-    samples_b = utils.qmc_sample_points_in_domain_3d_space_time(_min=0, _max=x_max, _t_min=0, _t_max=t_max, num_samples=Nb) # TODO: use y_max and z_max
-
+    samples_b = utils.qmc_sample_points_in_domain_3d_space_time(_x_min=0, _x_max=x_max, 
+                                                                _y_min=0, _y_max=z_max,
+                                                                _t_min=0, _t_max=t_max, num_samples=Nb)
+    
     x_b = utils.tensor_from_array(samples_b[0], device=device, requires_grad=False)
     y_b = utils.tensor_from_array(utils.ones(Nb), device=device, requires_grad=False)
     z_b = utils.tensor_from_array(samples_b[1], device=device, requires_grad=False)
     t_b = utils.tensor_from_array(samples_b[2], device=device, requires_grad=False)
     xyzt_b = utils.stack_xyzt_tensors(x_b, y_b, z_b, t_b)
 
-    # points & normal vectors on the surface of the wing
-    ## sample Nw wing points with the corresponding normals
-    sampled_indices = wing_df.sample(n=Nw).index
+    # points & normal vectors on the surface of the object
+    ## sample Ns object surface points with the corresponding normals
+    sampled_indices = s_df.sample(n=Ns).index
 
-    x_w, y_w, z_w = [utils.tensor_from_array(wing_df.loc[sampled_indices, col].values, device=device, requires_grad=False) for col in ['x', 'y', 'z']]
+    x_s, y_s, z_s = [utils.tensor_from_array(s_df.loc[sampled_indices, col].values, device=device, requires_grad=False) for col in ['x', 'y', 'z']]
     # n_x, n_y, n_z = [utils.tensor_from_array(norm_df.loc[sampled_indices, col].values, device=device, requires_grad=False) for col in ['x', 'y', 'z']]
-    t_w = utils.tensor_from_array(utils.sample_points_in_domain(0, t_max, Nw), device=device, requires_grad=False)
+    t_s = utils.tensor_from_array(utils.sample_points_in_domain(0, t_max, Ns), device=device, requires_grad=False)
 
-    xyzt_w = utils.stack_xyzt_tensors(x_w, y_w, z_w, t_w)
+    xyzt_s = utils.stack_xyzt_tensors(x_s, y_s, z_s, t_s)
     # n_xyz = utils.stack_xyz_tensors(n_x, n_y, n_z)
 
-    return (x_f, y_f, z_f, t_f, xyzt_0, xyzt_b, xyzt_w)
+    return (x_f, y_f, z_f, t_f, xyzt_0, xyzt_b, xyzt_s)
 
 
   def __log_metrics(self, total_loss: float, pde_loss: float, ic_loss: float, bc_loss: float, no_slip_loss: float):
