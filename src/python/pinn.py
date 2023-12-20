@@ -218,7 +218,23 @@ class PINN(nn.Module):
         checkpoint_epochs: int,
         model_dir: str):
 
-    print("Converting Nf, N0, Nb, Ns to nearest power of 2...") # Quasi - Monte Carlo sampling requirement
+    print("=======================================================")
+    print(self)
+    print(f"Model name: {self.model_name}")
+    print(f"Number of epochs: {epochs}")
+    print(f"Number of collocation points Nf: {Nf}")
+    print(f"Number of initial condition points N0: {N0}")
+    print(f"Number of boundary condition points Nb: {Nb}")
+    print(f"Number of object surface points Ns: {Ns}")
+    print(f"X max: {x_max}, Y max: {y_max}, Z max: {z_max}, T max: {t_max}")
+    print(f"mu: {mu}, rho: {rho}")
+    print(f"c1: {c1}, c2: {c2}, c3: {c3}, c4: {c4}")
+    print(f"Inflow velocity: {in_velocity}")
+    print(f"Device: {device}")
+    print(f"Checkpoint epochs: {checkpoint_epochs}")
+    print(f"Model directory: {model_dir}")
+    print("=======================================================")
+    print("=> converting Nf, N0, Nb, Ns to nearest power of 2...") # Quasi - Monte Carlo sampling requirement
 
     Nf = utils.nearest_power_of_2(Nf)
     N0 = utils.nearest_power_of_2(N0)
@@ -226,6 +242,9 @@ class PINN(nn.Module):
     Ns = utils.nearest_power_of_2(Ns)
 
     print(f"Nf: {Nf}, N0: {N0}, Nb: {Nb}, Ns: {Ns}")
+    print("=======================================================")
+    print("=> starting training...")
+    print("=======================================================")
 
     try:
       while self.epoch <= epochs:
