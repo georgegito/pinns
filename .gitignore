@@ -4,6 +4,7 @@
 *.STL
 .DS_Store
 **/models/archive/*
+**/models/v1/*
 **/models/v2/*
 **/models/v3/*
 **/models/v4/*
