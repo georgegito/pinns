@@ -19,11 +19,12 @@ class PINN(nn.Module):
     output_layer = nn.Linear(in_units, output_dim)
     nn.init.xavier_normal_(output_layer.weight)  # Apply Xavier initialization
     self.layers.append(output_layer)
-    self.logs = {"total_loss": [], "pde_loss": [], "ic_loss": [], "bc_loss": [], "no_slip_loss": []}
+    self.logs = {"total_loss": [], "pde_loss": [], "ic_loss": [], "bc_in_loss": [], "bc_out_loss": [], "no_slip_loss": []}
     self.curent_total_loss = -1
     self.current_pde_loss = -1
     self.current_ic_loss = -1
-    self.current_bc_loss = -1
+    self.current_bc_in_loss = -1
+    self.current_bc_out_loss = -1
     self.current_no_slip_loss = -1
     self.epoch = 0
     self.model_name = model_name
@@ -46,11 +47,12 @@ class PINN(nn.Module):
       z_f: torch.Tensor,
       t_f: torch.Tensor,
       input_0: torch.Tensor,
-      input_b: torch.Tensor,
+      input_b_in: torch.Tensor,
+      input_b_out: torch.Tensor,
       input_s: torch.Tensor,
       in_velocity: torch.Tensor,
       mu: float, rho: float, 
-      c1: float, c2: float, c3: float, c4: float
+      c1: float, c2: float, c3: float, c4: float, c5: float
   ) -> torch.Tensor:
 
     input_f = utils.stack_xyzt_tensors(x_f, y_f, z_f, t_f)
@@ -135,19 +137,32 @@ class PINN(nn.Module):
     ic_loss = 100 * (1/4) * (ic_loss_u + ic_loss_v + ic_loss_w + ic_loss_p)
 
     # Boundary conditions loss
-    output_b = self(input_b)
-    u_b_pred = output_b[:, 0]
-    v_b_pred = output_b[:, 1]
-    w_b_pred = output_b[:, 2]
+    ## Inlet: u = 0, v = -in_velocity, w = 0 & p = 1 for y = y_max
+    output_b_in = self(input_b_in)
+    u_b_in_pred = output_b_in[:, 0]
+    v_b_in_pred = output_b_in[:, 1]
+    w_b_in_pred = output_b_in[:, 2]
+    p_b_in_pred = output_b_in[:, 3]
 
-    # u = 0, v = -1 * in_velocity and w = 0 for y = 1
-    v_b_true = torch.full_like(v_b_pred, -1 * in_velocity)
+    v_b_in_true = torch.full_like(v_b_in_pred, -1 * in_velocity)
+    p_b_in_true = torch.ones_like(p_b_in_pred)
     
-    bc_loss_u = torch.mean(torch.square(u_b_pred))
-    bc_loss_v = torch.mean(torch.square(v_b_pred - v_b_true))
-    bc_loss_w = torch.mean(torch.square(w_b_pred))
+    bc_in_loss_u = torch.mean(torch.square(u_b_in_pred))
+    bc_in_loss_v = torch.mean(torch.square(v_b_in_pred - v_b_in_true))
+    bc_in_loss_w = torch.mean(torch.square(w_b_in_pred))
+    bc_in_loss_p = torch.mean(torch.square(p_b_in_pred - p_b_in_true))
 
-    bc_loss = 100 * (1/3) * (bc_loss_u + bc_loss_v + bc_loss_w)
+    bc_in_loss = 100 * (1/4) * (bc_in_loss_u + bc_in_loss_v + bc_in_loss_w + bc_in_loss_p)
+
+    ## Outlet: p = 1 for y = 0
+    output_b_out = self(input_b_out)
+    p_b_out_pred = output_b_out[:, 3]
+
+    p_b_out_true = torch.ones_like(p_b_out_pred)
+    
+    bc_out_loss_p = torch.mean(torch.square(p_b_out_pred - p_b_out_true))
+
+    bc_out_loss = 100 * bc_out_loss_p
 
     # Object surface boundary conditions loss
     output_s = self(input_s)
@@ -165,10 +180,11 @@ class PINN(nn.Module):
     # total loss
     total_loss =  c1 * pde_loss + \
                   c2 * ic_loss + \
-                  c3 * bc_loss + \
-                  c4 * no_slip_loss
+                  c3 * bc_in_loss + \
+                  c4 * bc_out_loss + \
+                  c5 * no_slip_loss
 
-    return total_loss, pde_loss, ic_loss, bc_loss, no_slip_loss
+    return total_loss, pde_loss, ic_loss, bc_in_loss, bc_out_loss, no_slip_loss
   
 
   def closure(
@@ -177,7 +193,7 @@ class PINN(nn.Module):
       optimizer: torch.optim.Optimizer, 
       Nf: int, N0: int, Nb: int, Ns: int, 
       x_max: float, y_max: float, z_max: float, t_max: float, 
-      c1: float, c2: float, c3: float, c4: float, 
+      c1: float, c2: float, c3: float, c4: float, c5: float,
       in_velocity: int, 
       mu: float, rho: float, 
       device: torch.device
@@ -185,18 +201,19 @@ class PINN(nn.Module):
 
     optimizer.zero_grad()
 
-    training_input = self.__create_training_inputs(s_df, x_max, y_max, z_max, t_max, Nf, N0, Nb, Ns, device)
+    training_input = self.__generate_training_inputs(s_df, x_max, y_max, z_max, t_max, Nf, N0, Nb, Ns, device)
 
-    total_loss, pde_loss, ic_loss, bc_loss, no_slip_loss = self.loss(
+    total_loss, pde_loss, ic_loss, bc_in_loss, bc_out_loss, no_slip_loss = self.loss(
                     *training_input,
                     in_velocity,
                     mu, rho,
-                    c1=c1, c2=c2, c3=c3, c4=c4)
+                    c1=c1, c2=c2, c3=c3, c4=c4, c5=c5)
 
     self.current_total_loss = total_loss.item()
     self.current_pde_loss = pde_loss.item()
     self.current_ic_loss = ic_loss.item()
-    self.current_bc_loss = bc_loss.item()
+    self.current_bc_in_loss = bc_in_loss.item()
+    self.current_bc_out_loss = bc_out_loss.item()
     self.current_no_slip_loss = no_slip_loss.item()
 
     total_loss.backward()
@@ -211,7 +228,7 @@ class PINN(nn.Module):
         s_df: pd.DataFrame,
         Nf: int, N0: int, Nb: int, Ns: int,
         x_max: float, y_max: float, z_max: float, t_max: float,
-        c1: float, c2: float, c3: float, c4: float,
+        c1: float, c2: float, c3: float, c4: float, c5: float,
         in_velocity: int,
         mu: float, rho: float,
         device: torch.device,
@@ -228,7 +245,7 @@ class PINN(nn.Module):
     print(f"Number of object surface points Ns: {Ns}")
     print(f"X max: {x_max}, Y max: {y_max}, Z max: {z_max}, T max: {t_max}")
     print(f"mu: {mu}, rho: {rho}")
-    print(f"c1: {c1}, c2: {c2}, c3: {c3}, c4: {c4}")
+    print(f"c1: {c1}, c2: {c2}, c3: {c3}, c4: {c4}, c5: {c5}")
     print(f"Inflow velocity: {in_velocity}")
     print(f"Device: {device}")
     print(f"Checkpoint epochs: {checkpoint_epochs}")
@@ -247,7 +264,7 @@ class PINN(nn.Module):
     print("=======================================================")
 
     try:
-      while self.epoch <= epochs:
+      while self.epoch < epochs:
 
         self.epoch += 1
 
@@ -257,13 +274,13 @@ class PINN(nn.Module):
                         optimizer, 
                         Nf, N0, Nb, Ns, 
                         x_max, y_max, z_max, t_max, 
-                        c1, c2, c3, c4, 
+                        c1, c2, c3, c4, c5,
                         in_velocity, 
                         mu, 
                         rho, 
                         device))
 
-        self.__log_metrics(self.current_total_loss, self.current_pde_loss, self.current_ic_loss, self.current_bc_loss, self.current_no_slip_loss)
+        self.__log_metrics(self.current_total_loss, self.current_pde_loss, self.current_ic_loss, self.current_bc_in_loss, self.current_bc_out_loss, self.current_no_slip_loss)
         self.print_current_metrics() 
         
         if np.isnan(self.current_total_loss):
@@ -305,7 +322,7 @@ class PINN(nn.Module):
     
     return rho * (div_u_t + convective_acc)
 
-  def __create_training_inputs(
+  def __generate_training_inputs(
         self, 
         s_df: pd.DataFrame, 
         x_max: float, y_max: float, z_max: float, t_max: float, 
@@ -318,6 +335,7 @@ class PINN(nn.Module):
                                                                 _z_min=0, _z_max=y_max, 
                                                                 _t_min=0, _t_max=t_max, 
                                                                 num_samples=Nf)
+
     x_f = utils.tensor_from_array(samples_f[0], device=device, requires_grad=True)
     y_f = utils.tensor_from_array(samples_f[1], device=device, requires_grad=True)
     z_f = utils.tensor_from_array(samples_f[2], device=device, requires_grad=True)
@@ -337,16 +355,34 @@ class PINN(nn.Module):
     t0 = utils.tensor_from_array(utils.zeros(N0), device=device, requires_grad=False)
     xyzt_0 = utils.stack_xyzt_tensors(x0, y0, z0, t0)
 
-    # boundary condition points (inflow, y=1)
-    samples_b = utils.qmc_sample_points_in_domain_3d_space_time(_x_min=0, _x_max=x_max, 
+    # boundary condition points
+    ## inflow, y=1
+    Nb_in = int(Nb/2)
+    samples_b_in = utils.qmc_sample_points_in_domain_3d_space_time(_x_min=0, _x_max=x_max,
                                                                 _y_min=0, _y_max=z_max,
-                                                                _t_min=0, _t_max=t_max, num_samples=Nb)
+                                                                _t_min=0, _t_max=t_max,
+                                                                num_samples=Nb_in)
     
-    x_b = utils.tensor_from_array(samples_b[0], device=device, requires_grad=False)
-    y_b = utils.tensor_from_array(utils.ones(Nb), device=device, requires_grad=False)
-    z_b = utils.tensor_from_array(samples_b[1], device=device, requires_grad=False)
-    t_b = utils.tensor_from_array(samples_b[2], device=device, requires_grad=False)
-    xyzt_b = utils.stack_xyzt_tensors(x_b, y_b, z_b, t_b)
+    x_b_in = utils.tensor_from_array(samples_b_in[0], device=device, requires_grad=False)
+    y_b_in = utils.tensor_from_array(utils.ones(Nb_in), device=device, requires_grad=False)
+    z_b_in = utils.tensor_from_array(samples_b_in[1], device=device, requires_grad=False)
+    t_b_in = utils.tensor_from_array(samples_b_in[2], device=device, requires_grad=False)
+    xyzt_b_in = utils.stack_xyzt_tensors(x_b_in, y_b_in, z_b_in, t_b_in)
+
+    ## outflow, y=0
+    Nb_out = int(Nb/2)
+    samples_b_out = utils.qmc_sample_points_in_domain_3d_space_time(_x_min=0, _x_max=x_max,
+                                                                _y_min=0, _y_max=z_max,
+                                                                _t_min=0, _t_max=t_max,
+                                                                num_samples=Nb_out)
+
+    # TODO: add more bcs
+
+    x_b_out = utils.tensor_from_array(samples_b_out[0], device=device, requires_grad=False)
+    y_b_out = utils.tensor_from_array(utils.zeros(Nb_out), device=device, requires_grad=False)
+    z_b_out = utils.tensor_from_array(samples_b_out[1], device=device, requires_grad=False)
+    t_b_out = utils.tensor_from_array(samples_b_out[2], device=device, requires_grad=False)
+    xyzt_b_out = utils.stack_xyzt_tensors(x_b_out, y_b_out, z_b_out, t_b_out)
 
     # points & normal vectors on the surface of the object
     ## sample Ns object surface points with the corresponding normals
@@ -359,15 +395,16 @@ class PINN(nn.Module):
     xyzt_s = utils.stack_xyzt_tensors(x_s, y_s, z_s, t_s)
     # n_xyz = utils.stack_xyz_tensors(n_x, n_y, n_z)
 
-    return (x_f, y_f, z_f, t_f, xyzt_0, xyzt_b, xyzt_s)
+    return (x_f, y_f, z_f, t_f, xyzt_0, xyzt_b_in, xyzt_b_out, xyzt_s)
 
 
-  def __log_metrics(self, total_loss: float, pde_loss: float, ic_loss: float, bc_loss: float, no_slip_loss: float):
+  def __log_metrics(self, total_loss: float, pde_loss: float, ic_loss: float, bc_in_loss: float, bc_out_loss: float, no_slip_loss: float):
     """ Log training metrics """
     self.logs['total_loss'].append(total_loss)
     self.logs['pde_loss'].append(pde_loss)
     self.logs['ic_loss'].append(ic_loss)
-    self.logs['bc_loss'].append(bc_loss)
+    self.logs['bc_in_loss'].append(bc_in_loss)
+    self.logs['bc_out_loss'].append(bc_out_loss)
     self.logs['no_slip_loss'].append(no_slip_loss)
 
 
@@ -383,7 +420,8 @@ class PINN(nn.Module):
                 f"Total Loss: {self.logs['total_loss'][-1]:.4f}, "
                 f"PDE Loss: {self.logs['pde_loss'][-1]:.4f}, "
                 f"IC Loss: {self.logs['ic_loss'][-1]:.4f}, "
-                f"BC Loss: {self.logs['bc_loss'][-1]:.4f}, "
+                f"BC Inlet Loss: {self.logs['bc_in_loss'][- 1]:.4f}, "
+                f"BC Outlet Loss: {self.logs['bc_out_loss'][- 1]:.4f}, "
                 f"No-Slip Loss: {self.logs['no_slip_loss'][-1]:.4f}")
       else:
           print("No metrics to display.")
@@ -399,7 +437,8 @@ class PINN(nn.Module):
                   f"Total Loss: {self.logs['total_loss'][_epoch - 1]:.4f}, "
                   f"PDE Loss: {self.logs['pde_loss'][_epoch - 1]:.4f}, "
                   f"IC Loss: {self.logs['ic_loss'][_epoch - 1]:.4f}, "
-                  f"BC Loss: {self.logs['bc_loss'][_epoch - 1]:.4f}, "
+                  f"BC Outlet Loss: {self.logs['bc_in_loss'][_epoch - 1]:.4f}, "
+                  f"BC Inlet Loss: {self.logs['bc_out_loss'][_epoch - 1]:.4f}, "
                   f"No Slip Loss: {self.logs['no_slip_loss'][_epoch - 1]:.4f}")
         else:
             print("No metrics to display.")
