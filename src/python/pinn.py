@@ -19,13 +19,16 @@ class PINN(nn.Module):
     output_layer = nn.Linear(in_units, output_dim)
     nn.init.xavier_normal_(output_layer.weight)  # Apply Xavier initialization
     self.layers.append(output_layer)
-    self.logs = {"total_loss": [], "pde_loss": [], "ic_loss": [], 
+    self.logs = {"total_loss": [], 
+                 "pde_ns_loss": [], "pde_ps_loss": [],
+                 "ic_loss": [], 
                  "bc_in_loss": [], "bc_out_loss": [], 
                   "bc_left_loss": [], "bc_right_loss": [],
-                  "bc_down_loss": [], "bc_up_loss": [],
+                  "bc_down_loss": [], "bc_up_loss": [], 
                  "no_slip_loss": []}
     self.curent_total_loss = -1
-    self.current_pde_loss = -1
+    self.current_pde_nv_loss = -1
+    self.current_pde_ps_loss = -1
     self.current_ic_loss = -1
     self.current_bc_in_loss = -1
     self.current_bc_out_loss = -1
@@ -64,7 +67,7 @@ class PINN(nn.Module):
       input_s: torch.Tensor,
       in_velocity: torch.Tensor,
       mu: float, rho: float, 
-      c1: float, c2: float, c3: float, c4: float, c5: float, c6: float, c7: float, c8: float, c9: float
+      c1: float, c2: float, c3: float, c4: float, c5: float, c6: float, c7: float, c8: float, c9: float, c10: float
   ) -> torch.Tensor:
 
     input_f = utils.stack_xyzt_tensors(x_f, y_f, z_f, t_f)
@@ -125,12 +128,13 @@ class PINN(nn.Module):
     ### Poisson equation
     f5 = p_xx + p_yy + p_zz - b
 
-    pde_loss =  100 * (1/5) * torch.mean(torch.square(f1)) + \
+    pde_ns_loss =  100 * (1/4) * torch.mean(torch.square(f1)) + \
                         torch.mean(torch.square(f2)) + \
                         torch.mean(torch.square(f3)) + \
-                        torch.mean(torch.square(f4)) + \
-                        torch.mean(torch.square(f5))
-
+                        torch.mean(torch.square(f4))
+    
+    pde_ps_loss = 100 * torch.mean(torch.square(f5))
+    
     # Initial condition loss
     output_0 = self(input_0)
     u0_pred = output_0[:, 0]
@@ -253,17 +257,18 @@ class PINN(nn.Module):
     no_slip_loss = 100 * (1/3) * (no_slip_loss_u + no_slip_loss_v + no_slip_loss_w)
 
     # total loss
-    total_loss =  c1 * pde_loss + \
-                  c2 * ic_loss + \
-                  c3 * bc_in_loss + \
-                  c4 * bc_out_loss + \
-                  c5 * bc_left_loss + \
-                  c6 * bc_right_loss + \
-                  c7 * bc_down_loss + \
-                  c8 * bc_up_loss + \
-                  c9 * no_slip_loss
+    total_loss =  c1 * pde_ns_loss + \
+                  c2 * pde_ps_loss + \
+                  c3 * ic_loss + \
+                  c4 * bc_in_loss + \
+                  c5 * bc_out_loss + \
+                  c6 * bc_left_loss + \
+                  c7 * bc_right_loss + \
+                  c8 * bc_down_loss + \
+                  c9 * bc_up_loss + \
+                  c10 * no_slip_loss
 
-    return total_loss, pde_loss, ic_loss, \
+    return total_loss, pde_ns_loss, pde_ps_loss, ic_loss, \
            bc_in_loss, bc_out_loss, \
            bc_left_loss, bc_right_loss, \
            bc_down_loss, bc_up_loss, \
@@ -276,7 +281,7 @@ class PINN(nn.Module):
       optimizer: torch.optim.Optimizer, 
       Nf: int, N0: int, Nb: int, Ns: int, 
       x_max: float, y_max: float, z_max: float, t_max: float, 
-      c1: float, c2: float, c3: float, c4: float, c5: float, c6: float, c7: float, c8: float, c9: float,
+      c1: float, c2: float, c3: float, c4: float, c5: float, c6: float, c7: float, c8: float, c9: float, c10: float,
       in_velocity: int, 
       mu: float, rho: float, 
       device: torch.device
@@ -286,14 +291,15 @@ class PINN(nn.Module):
 
     training_input = self.__generate_training_inputs(s_df, x_max, y_max, z_max, t_max, Nf, N0, Nb, Ns, device)
 
-    total_loss, pde_loss, ic_loss, bc_in_loss, bc_out_loss, bc_left_loss, bc_right_loss, bc_down_loss, bc_up_loss, no_slip_loss = self.loss(
+    total_loss, pde_ns_loss, pde_ps_loss, ic_loss, bc_in_loss, bc_out_loss, bc_left_loss, bc_right_loss, bc_down_loss, bc_up_loss, no_slip_loss = self.loss(
                     *training_input,
                     in_velocity,
                     mu, rho,
-                    c1=c1, c2=c2, c3=c3, c4=c4, c5=c5, c6=c6, c7=c7, c8=c8, c9=c9)
+                    c1=c1, c2=c2, c3=c3, c4=c4, c5=c5, c6=c6, c7=c7, c8=c8, c9=c9, c10=c10)
 
     self.current_total_loss = total_loss.item()
-    self.current_pde_loss = pde_loss.item()
+    self.current_pde_ns_loss = pde_ns_loss.item()
+    self.current_pde_ps_loss = pde_ps_loss.item()
     self.current_ic_loss = ic_loss.item()
     self.current_bc_in_loss = bc_in_loss.item()
     self.current_bc_out_loss = bc_out_loss.item()
@@ -320,7 +326,7 @@ class PINN(nn.Module):
         device: torch.device,
         checkpoint_epochs: int,
         model_dir: str,
-        c1 = 1., c2 = 1., c3 = 1., c4 = 1., c5 = 1., c6 = 1., c7 = 1., c8 = 1., c9 = 1.):
+        c1 = 1., c2 = 1., c3 = 1., c4 = 1., c5 = 1., c6 = 1., c7 = 1., c8 = 1., c9 = 1., c10=1.):
 
     print("=======================================================")
     print(self)
@@ -332,7 +338,7 @@ class PINN(nn.Module):
     print(f"Number of object surface points Ns: {Ns}")
     print(f"X max: {x_max}, Y max: {y_max}, Z max: {z_max}, T max: {t_max}")
     print(f"mu: {mu}, rho: {rho}")
-    print(f"c1: {c1}, c2: {c2}, c3: {c3}, c4: {c4}, c5: {c5}, c6: {c6}, c7: {c7}, c8: {c8}, c9: {c9}")
+    print(f"c1: {c1}, c2: {c2}, c3: {c3}, c4: {c4}, c5: {c5}, c6: {c6}, c7: {c7}, c8: {c8}, c9: {c9}, c10: {c10}")
     print(f"Inflow velocity: {in_velocity}")
     print(f"Device: {device}")
     print(f"Checkpoint epochs: {checkpoint_epochs}")
@@ -361,13 +367,15 @@ class PINN(nn.Module):
                         optimizer, 
                         Nf, N0, Nb, Ns, 
                         x_max, y_max, z_max, t_max, 
-                        c1, c2, c3, c4, c5, c6, c7, c8, c9,
+                        c1, c2, c3, c4, c5, c6, c7, c8, c9, c10,
                         in_velocity, 
                         mu, 
                         rho, 
                         device))
 
-        self.__log_metrics(self.current_total_loss, self.current_pde_loss, self.current_ic_loss, 
+        self.__log_metrics(self.current_total_loss, 
+                           self.current_pde_ns_loss, self.current_pde_ps_loss, 
+                           self.current_ic_loss, 
                            self.current_bc_in_loss, self.current_bc_out_loss, 
                            self.current_bc_left_loss, self.current_bc_right_loss, 
                            self.current_bc_down_loss, self.current_bc_up_loss, 
@@ -540,14 +548,17 @@ class PINN(nn.Module):
     return (x_f, y_f, z_f, t_f, xyzt_0, xyzt_b_in, xyzt_b_out, xyzt_b_left, xyzt_b_right, xyzt_b_down, xyzt_b_up, xyzt_s)
 
 
-  def __log_metrics(self, total_loss: float, pde_loss: float, ic_loss: float, 
+  def __log_metrics(self, total_loss: float, 
+                    pde_ns_loss: float, pde_ps_loss: float, 
+                    ic_loss: float, 
                     bc_in_loss: float, bc_out_loss: float, 
                     bc_left_loss: float, bc_right_loss: float, 
                     bc_down_loss: float, bc_up_loss: float, 
                     no_slip_loss: float):
     """ Log training metrics """
     self.logs['total_loss'].append(total_loss)
-    self.logs['pde_loss'].append(pde_loss)
+    self.logs['pde_ns_loss'].append(pde_ns_loss)
+    self.logs['pde_ps_loss'].append(pde_ps_loss)
     self.logs['ic_loss'].append(ic_loss)
     self.logs['bc_in_loss'].append(bc_in_loss)
     self.logs['bc_out_loss'].append(bc_out_loss)
@@ -568,7 +579,8 @@ class PINN(nn.Module):
       if self.logs['total_loss']:
           print(f"Epoch: {self.epoch}, "
                 f"Total Loss: {self.logs['total_loss'][-1]:.4f}, "
-                f"PDE Loss: {self.logs['pde_loss'][-1]:.4f}, "
+                f"PDE Loss - Navier Stoker: {self.logs['pde_ns_loss'][-1]:.4f}, "
+                f"PDE Loss - Poisson: {self.logs['pde_ps_loss'][-1]:.4f}, "
                 f"IC Loss: {self.logs['ic_loss'][-1]:.4f}, "
                 f"BC Inlet Loss: {self.logs['bc_in_loss'][- 1]:.4f}, "
                 f"BC Outlet Loss: {self.logs['bc_out_loss'][- 1]:.4f}, "
@@ -589,7 +601,8 @@ class PINN(nn.Module):
         if self.logs['total_loss']:
             print(f"Epoch: {_epoch}, "
                   f"Total Loss: {self.logs['total_loss'][_epoch - 1]:.4f}, "
-                  f"PDE Loss: {self.logs['pde_loss'][_epoch - 1]:.4f}, "
+                  f"PDE Loss - Navier Stoker: {self.logs['pde_ns_loss'][_epoch - 1]:.4f}, "
+                  f"PDE Loss - Poisson: {self.logs['pde_ps_loss'][_epoch - 1]:.4f}, "
                   f"IC Loss: {self.logs['ic_loss'][_epoch - 1]:.4f}, "
                   f"BC Inlet Loss: {self.logs['bc_in_loss'][_epoch - 1]:.4f}, "
                   f"BC Outlet Loss: {self.logs['bc_out_loss'][_epoch - 1]:.4f}, "
