@@ -289,7 +289,7 @@ class PINN(nn.Module):
 
     optimizer.zero_grad()
 
-    training_input = self.__generate_training_inputs(s_df, x_max, y_max, z_max, t_max, Nf, N0, Nb, Ns, device)
+    training_input = self.__generate_inputs(s_df, x_max, y_max, z_max, t_max, Nf, N0, Nb, Ns, device)
 
     total_loss, pde_ns_loss, pde_ps_loss, ic_loss, bc_in_loss, bc_out_loss, bc_left_loss, bc_right_loss, bc_down_loss, bc_up_loss, no_slip_loss = self.loss(
                     *training_input,
@@ -312,6 +312,29 @@ class PINN(nn.Module):
     total_loss.backward()
 
     return total_loss
+
+
+  def eval_pinn(
+      self, 
+      s_df: pd.DataFrame,
+      Nf: int, N0: int, Nb: int, Ns: int, 
+      x_max: float, y_max: float, z_max: float, t_max: float, 
+      in_velocity: int, 
+      mu: float, rho: float, 
+      device: torch.device,
+      c1 = 1., c2 = 1., c3 = 1., c4 = 1., c5 = 1., c6 = 1., c7 = 1., c8 = 1., c9 = 1., c10=1.) -> torch.Tensor:
+
+    Nf = utils.nearest_power_of_2(Nf)
+    N0 = utils.nearest_power_of_2(N0)
+    Nb = utils.nearest_power_of_2(Nb)
+    Ns = utils.nearest_power_of_2(Ns)
+
+    training_input = self.__generate_inputs(s_df, x_max, y_max, z_max, t_max, Nf, N0, Nb, Ns, device)
+
+    return [_loss.item() for _loss in self.loss(*training_input,
+                                                in_velocity,
+                                                mu, rho,
+                                                c1=c1, c2=c2, c3=c3, c4=c4, c5=c5, c6=c6, c7=c7, c8=c8, c9=c9, c10=c10)]
 
 
   def train_pinn(
@@ -422,7 +445,7 @@ class PINN(nn.Module):
     return rho * (div_u_t + convective_acc)
 
 
-  def __generate_training_inputs(
+  def __generate_inputs(
         self, 
         s_df: pd.DataFrame, 
         x_max: float, y_max: float, z_max: float, t_max: float, 
