@@ -140,92 +140,49 @@ class PINN(nn.Module):
     u_b_in_pred = output_b_in[:, 0]
     v_b_in_pred = output_b_in[:, 1]
     w_b_in_pred = output_b_in[:, 2]
-    p_b_in_pred = output_b_in[:, 3]
-
     v_b_in_true = torch.full_like(v_b_in_pred, -1 * in_velocity)
-    p_b_in_true = torch.ones_like(p_b_in_pred)
-    
     bc_in_loss_u = torch.mean(torch.square(u_b_in_pred))
     bc_in_loss_v = torch.mean(torch.square(v_b_in_pred - v_b_in_true))
     bc_in_loss_w = torch.mean(torch.square(w_b_in_pred))
-    bc_in_loss_p = torch.mean(torch.square(p_b_in_pred - p_b_in_true))
-
-    bc_in_loss = 100 * (1/4) * (bc_in_loss_u + bc_in_loss_v + bc_in_loss_w + bc_in_loss_p)
+    bc_in_loss = 100 * (1/3) * (bc_in_loss_u + bc_in_loss_v + bc_in_loss_w)
 
     ## Outlet: p = 1 for y = 0
     output_b_out = self(input_b_out)
     p_b_out_pred = output_b_out[:, 3]
-
     p_b_out_true = torch.ones_like(p_b_out_pred)
-    
     bc_out_loss_p = torch.mean(torch.square(p_b_out_pred - p_b_out_true))
-
     bc_out_loss = 100 * bc_out_loss_p
 
-    # ## Left (Far-field): u = 0, v = -in_velocity, w = 0 & p = 1 for x = 0
-    # output_b_left = self(input_b_left)
-    # u_b_left_pred = output_b_left[:, 0]
-    # v_b_left_pred = output_b_left[:, 1]
-    # w_b_left_pred = output_b_left[:, 2]
-    # p_b_left_pred = output_b_left[:, 3]
+    ## Left (Far-field): p = 1 for x = 0
+    output_b_left = self(input_b_left)
+    p_b_left_pred = output_b_left[:, 3]
+    p_b_left_true = torch.ones_like(p_b_left_pred)
+    bc_left_loss_p = torch.mean(torch.square(p_b_left_pred - p_b_left_true))
+    bc_left_loss = 100 * bc_left_loss_p
 
-    # v_b_left_true = torch.full_like(v_b_left_pred, -1 * in_velocity)
-    # p_b_left_true = torch.ones_like(p_b_in_pred)
-    
-    # bc_left_loss_u = torch.mean(torch.square(u_b_left_pred))
-    # bc_left_loss_v = torch.mean(torch.square(v_b_left_pred - v_b_left_true))
-    # bc_left_loss_w = torch.mean(torch.square(w_b_left_pred))
-    # bc_left_loss_p = torch.mean(torch.square(p_b_left_pred - p_b_left_true))
-
-    # bc_left_loss = 100 * (1/4) * (bc_left_loss_u + bc_left_loss_v + bc_left_loss_w + bc_left_loss_p)
-    bc_left_loss = torch.tensor(0)
-
-    # ## Right (Far-field): u = 0, v = -in_velocity, w = 0 & p = 1 for x = x_max
-    # output_b_right = self(input_b_right)
-    # u_b_right_pred = output_b_right[:, 0]
-    # v_b_right_pred = output_b_right[:, 1]
-    # w_b_right_pred = output_b_right[:, 2]
-    # p_b_right_pred = output_b_right[:, 3]
-
-    # v_b_right_true = torch.full_like(v_b_right_pred, -1 * in_velocity)
-    # p_b_right_true = torch.ones_like(p_b_right_pred)
-    
-    # bc_right_loss_u = torch.mean(torch.square(u_b_right_pred))
-    # bc_right_loss_v = torch.mean(torch.square(v_b_right_pred - v_b_right_true))
-    # bc_right_loss_w = torch.mean(torch.square(w_b_right_pred))
-    # bc_right_loss_p = torch.mean(torch.square(p_b_right_pred - p_b_right_true))
-
-    # bc_right_loss = 100 * (1/4) * (bc_right_loss_u + bc_right_loss_v + bc_right_loss_w + bc_right_loss_p)
-    bc_right_loss = torch.tensor(0)
+    ## Right (Far-field): p = 1 for x = x_max
+    output_b_right = self(input_b_right)
+    p_b_right_pred = output_b_right[:, 3]
+    p_b_right_true = torch.ones_like(p_b_right_pred)
+    bc_right_loss_p = torch.mean(torch.square(p_b_right_pred - p_b_right_true))
+    bc_right_loss = 100 * bc_right_loss_p
 
     # Down (No-slip wall): u = 0, v = 0, w = 0 for z = 0
     output_b_down = self(input_b_down)
     u_b_down_pred = output_b_down[:, 0]
     v_b_down_pred = output_b_down[:, 1]
     w_b_down_pred = output_b_down[:, 2]
-
     bc_down_loss_u = torch.mean(torch.square(u_b_down_pred))
     bc_down_loss_v = torch.mean(torch.square(v_b_down_pred))
     bc_down_loss_w = torch.mean(torch.square(w_b_down_pred))
-
     bc_down_loss = 100 * (1/3) * (bc_down_loss_u + bc_down_loss_v + bc_down_loss_w)
 
-    # Up (Far-field Conditions): u = 0, v = -in_velocity, w = 0 & p = 1 for z = z_max
+    # Up (Far-field Conditions): p = 1 for z = z_max
     output_b_up = self(input_b_up)
-    u_b_up_pred = output_b_up[:, 0]
-    v_b_up_pred = output_b_up[:, 1]
-    w_b_up_pred = output_b_up[:, 2]
     p_b_up_pred = output_b_up[:, 3]
-
-    v_b_up_true = torch.full_like(v_b_up_pred, -1 * in_velocity)
     p_b_up_true = torch.ones_like(p_b_up_pred)
-    
-    bc_up_loss_u = torch.mean(torch.square(u_b_up_pred))
-    bc_up_loss_v = torch.mean(torch.square(v_b_up_pred - v_b_up_true))
-    bc_up_loss_w = torch.mean(torch.square(w_b_up_pred))
     bc_up_loss_p = torch.mean(torch.square(p_b_up_pred - p_b_up_true))
-
-    bc_up_loss = 100 * (1/4) * (bc_up_loss_u + bc_up_loss_v + bc_up_loss_w + bc_up_loss_p)
+    bc_up_loss = 100 * bc_up_loss_p
 
     # Object surface boundary conditions loss
     output_s = self(input_s)
@@ -237,7 +194,6 @@ class PINN(nn.Module):
     no_slip_loss_u = torch.mean(torch.square(u_s_pred))
     no_slip_loss_v = torch.mean(torch.square(v_s_pred))
     no_slip_loss_w = torch.mean(torch.square(w_s_pred))
-
     no_slip_loss = 100 * (1/3) * (no_slip_loss_u + no_slip_loss_v + no_slip_loss_w)
 
     # Real measurements loss
@@ -245,21 +201,19 @@ class PINN(nn.Module):
     # u_u_pred = output_u[:, 0]
     # v_u_pred = output_u[:, 1]
     # w_u_pred = output_u[:, 2]
-
     # u_u_exp = output_u_exp[:, 0]
     # v_u_exp = output_u_exp[:, 1]
     # w_u_exp = output_u_exp[:, 2]
-
     # real_data_loss_u = torch.mean(torch.square(u_u_pred - u_u_exp))
     # real_data_loss_v = torch.mean(torch.square(v_u_pred - v_u_exp))
     # real_data_loss_w = torch.mean(torch.square(w_u_pred - w_u_exp))
-
     # real_data_loss = 100 * (1/3) * (real_data_loss_u + real_data_loss_v + real_data_loss_w)
     real_data_loss = torch.tensor(0)
 
     # Impermeability condition loss
-    dot_products = torch.sum(output_s[:, :3] * normals, dim=1)
-    imp_loss = 100 * torch.mean(torch.square(dot_products))
+    # dot_products = torch.sum(output_s[:, :3] * normals, dim=1)
+    # imp_loss = 100 * torch.mean(torch.square(dot_products))
+    imp_loss = torch.tensor(0)
 
     # total loss
     total_loss =  c1 * pde_ns_loss + \
