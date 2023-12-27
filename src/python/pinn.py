@@ -259,7 +259,7 @@ class PINN(nn.Module):
 
     # Impermeability condition loss
     dot_products = torch.sum(output_s[:, :3] * normals, dim=1)
-    imp_loss = torch.mean(torch.square(dot_products))
+    imp_loss = 100 * torch.mean(torch.square(dot_products))
 
     # total loss
     total_loss =  c1 * pde_ns_loss + \
