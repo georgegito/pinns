@@ -58,6 +58,20 @@ def sample_points_in_domain_4d_space_time(_x_min: float, _x_max: float,
 
   return x, y, z, t
 
+def qmc_sample_points_in_domain_2d(_x_min: float, _x_max: float, 
+                                   _y_min: float, _y_max: float, 
+                                   num_samples: int) -> np.ndarray:
+  sobol = Sobol(d=2)  # 2 dimensions
+  samples = sobol.random_base2(m=int(np.log2(num_samples)))
+
+  # Apply domain transformations for space
+  samples[:, 0] = _x_min + (_x_max - _x_min) * samples[:, 0]
+  samples[:, 1] = _y_min + (_y_max - _y_min) * samples[:, 1]
+
+  x = samples[:, 0]
+  y = samples[:, 1]
+  
+  return x, y
 
 def qmc_sample_points_in_domain_3d(_x_min: float, _x_max: float, 
                                    _y_min: float, _y_max: float, 

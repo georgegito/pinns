@@ -21,7 +21,6 @@ class PINN(nn.Module):
     self.layers.append(output_layer)
     self.logs = {"total_loss": [], 
                  "pde_ns_loss": [], "pde_ps_loss": [],
-                 "ic_loss": [], 
                  "bc_in_loss": [], "bc_out_loss": [], 
                   "bc_left_loss": [], "bc_right_loss": [],
                   "bc_down_loss": [], "bc_up_loss": [], 
@@ -29,7 +28,6 @@ class PINN(nn.Module):
     self.curent_total_loss = -1
     self.current_pde_nv_loss = -1
     self.current_pde_ps_loss = -1
-    self.current_ic_loss = -1
     self.current_bc_in_loss = -1
     self.current_bc_out_loss = -1
     self.current_bc_left_loss = -1
@@ -45,8 +43,8 @@ class PINN(nn.Module):
   def forward(self, input: torch.Tensor) -> torch.Tensor:
     for layer in self.layers[:-1]:
       # output = torch.sigmoid(layer(input))
-      output = torch.tanh(layer(input))
-      # output = torch.relu(layer(input))
+      # output = torch.tanh(layer(input))
+      output = torch.relu(layer(input))
       input = output
     output = self.layers[-1](input)
     return output
@@ -57,8 +55,6 @@ class PINN(nn.Module):
       x_f: torch.Tensor,
       y_f: torch.Tensor,
       z_f: torch.Tensor,
-      t_f: torch.Tensor,
-      input_0: torch.Tensor,
       input_b_in: torch.Tensor,
       input_b_out: torch.Tensor,
       input_b_left: torch.Tensor,
@@ -70,10 +66,10 @@ class PINN(nn.Module):
       output_u_exp: torch.Tensor,
       in_velocity: torch.Tensor,
       mu: float, rho: float, 
-      c1: float, c2: float, c3: float, c4: float, c5: float, c6: float, c7: float, c8: float, c9: float, c10: float, c11: float
+      c1: float, c2: float, c3: float, c4: float, c5: float, c6: float, c7: float, c8: float, c9: float, c10: float
   ) -> torch.Tensor:
 
-    input_f = utils.stack_xyzt_tensors(x_f, y_f, z_f, t_f)
+    input_f = utils.stack_xyz_tensors(x_f, y_f, z_f)
 
     output_f = self(input_f)
     u = output_f[:, 0]
@@ -81,7 +77,6 @@ class PINN(nn.Module):
     w = output_f[:, 2]
     p = output_f[:, 3]
 
-    u_t = utils.grad(u, t_f)
     u_x = utils.grad(u, x_f)
     u_y = utils.grad(u, y_f)
     u_z = utils.grad(u, z_f)
@@ -89,7 +84,6 @@ class PINN(nn.Module):
     u_yy = utils.grad(u_y, y_f, False)
     u_zz = utils.grad(u_z, z_f, False)
 
-    v_t = utils.grad(v, t_f)
     v_x = utils.grad(v, x_f)
     v_y = utils.grad(v, y_f)
     v_z = utils.grad(v, z_f)
@@ -97,7 +91,6 @@ class PINN(nn.Module):
     v_yy = utils.grad(v_y, y_f, False)
     v_zz = utils.grad(v_z, z_f, False)
 
-    w_t = utils.grad(w, t_f)
     w_x = utils.grad(w, x_f)
     w_y = utils.grad(w, y_f)
     w_z = utils.grad(w, z_f)
@@ -112,7 +105,7 @@ class PINN(nn.Module):
     p_z = utils.grad(p, z_f)
     p_zz = utils.grad(p_z, z_f, False)
 
-    b = self.__compute_b(u=u, v=v, w=w, t=t_f, 
+    b = self.__compute_b(u=u, v=v, w=w, 
                        u_x=u_x, u_y=u_y, u_z=u_z, 
                        v_x=v_x, v_y=v_y, v_z=v_z, 
                        w_x=w_x, w_y=w_y, w_z=w_z, 
@@ -121,11 +114,11 @@ class PINN(nn.Module):
     # PDE loss
     ## Navier-Stokes equations
     ### X-momentum equation
-    f1 = u_t + u*u_x + v*u_y + w*u_z + (1/rho) * p_x - mu * (u_xx + u_yy + u_zz)
+    f1 = u*u_x + v*u_y + w*u_z + (1/rho) * p_x - mu * (u_xx + u_yy + u_zz)
     ### Y-momentum equation
-    f2 = v_t + u*v_x + v*v_y + w*v_z + (1/rho) * p_y - mu * (v_xx + v_yy + v_zz)
+    f2 = u*v_x + v*v_y + w*v_z + (1/rho) * p_y - mu * (v_xx + v_yy + v_zz)
     ### Z-momentum equation
-    f3 = w_t + u*w_x + v*w_y + w*w_z + (1/rho) * p_z - mu * (w_xx + w_yy + w_zz)
+    f3 = u*w_x + v*w_y + w*w_z + (1/rho) * p_z - mu * (w_xx + w_yy + w_zz)
     ### Continuity equation
     f4 = u_x + v_y + w_z
     ### Poisson equation
@@ -138,23 +131,6 @@ class PINN(nn.Module):
     
     pde_ps_loss = 100 * torch.mean(torch.square(f5))
     
-    # Initial condition loss
-    output_0 = self(input_0)
-    u0_pred = output_0[:, 0]
-    v0_pred = output_0[:, 1]
-    w0_pred = output_0[:, 2]
-    p0_pred = output_0[:, 3]
-
-    # for t = 0 -> u, v, w = 0, p = 1
-    p0_true = torch.ones_like(p0_pred)
-
-    ic_loss_u = torch.mean(torch.square(u0_pred))
-    ic_loss_v = torch.mean(torch.square(v0_pred))
-    ic_loss_w = torch.mean(torch.square(w0_pred))
-    ic_loss_p = torch.mean(torch.square(p0_pred - p0_true))
-
-    ic_loss = 100 * (1/4) * (ic_loss_u + ic_loss_v + ic_loss_w + ic_loss_p)
-
     # Boundary conditions loss
     ## Inlet: u = 0, v = -in_velocity, w = 0 & p = 1 for y = y_max
     output_b_in = self(input_b_in)
@@ -182,7 +158,6 @@ class PINN(nn.Module):
     bc_out_loss_p = torch.mean(torch.square(p_b_out_pred - p_b_out_true))
 
     bc_out_loss = 100 * bc_out_loss_p
-    # bc_out_loss = torch.tensor(0)
 
     # ## Left (Far-field): u = 0, v = -in_velocity, w = 0 & p = 1 for x = 0
     # output_b_left = self(input_b_left)
@@ -220,36 +195,34 @@ class PINN(nn.Module):
     # bc_right_loss = 100 * (1/4) * (bc_right_loss_u + bc_right_loss_v + bc_right_loss_w + bc_right_loss_p)
     bc_right_loss = torch.tensor(0)
 
-    ## Down (No-slip wall): u = 0, v = 0, w = 0 for z = 0
-    # output_b_down = self(input_b_down)
-    # u_b_down_pred = output_b_down[:, 0]
-    # v_b_down_pred = output_b_down[:, 1]
-    # w_b_down_pred = output_b_down[:, 2]
+    # Down (No-slip wall): u = 0, v = 0, w = 0 for z = 0
+    output_b_down = self(input_b_down)
+    u_b_down_pred = output_b_down[:, 0]
+    v_b_down_pred = output_b_down[:, 1]
+    w_b_down_pred = output_b_down[:, 2]
 
-    # bc_down_loss_u = torch.mean(torch.square(u_b_down_pred))
-    # bc_down_loss_v = torch.mean(torch.square(v_b_down_pred))
-    # bc_down_loss_w = torch.mean(torch.square(w_b_down_pred))
+    bc_down_loss_u = torch.mean(torch.square(u_b_down_pred))
+    bc_down_loss_v = torch.mean(torch.square(v_b_down_pred))
+    bc_down_loss_w = torch.mean(torch.square(w_b_down_pred))
 
-    # bc_down_loss = 100 * (1/3) * (bc_down_loss_u + bc_down_loss_v + bc_down_loss_w)
-    bc_down_loss = torch.tensor(0)
+    bc_down_loss = 100 * (1/3) * (bc_down_loss_u + bc_down_loss_v + bc_down_loss_w)
 
-    ## Up (Far-field Conditions): u = 0, v = -in_velocity, w = 0 & p = 1 for z = z_max
-    # output_b_up = self(input_b_up)
-    # u_b_up_pred = output_b_up[:, 0]
-    # v_b_up_pred = output_b_up[:, 1]
-    # w_b_up_pred = output_b_up[:, 2]
-    # p_b_up_pred = output_b_up[:, 3]
+    # Up (Far-field Conditions): u = 0, v = -in_velocity, w = 0 & p = 1 for z = z_max
+    output_b_up = self(input_b_up)
+    u_b_up_pred = output_b_up[:, 0]
+    v_b_up_pred = output_b_up[:, 1]
+    w_b_up_pred = output_b_up[:, 2]
+    p_b_up_pred = output_b_up[:, 3]
 
-    # v_b_up_true = torch.full_like(v_b_up_pred, -1 * in_velocity)
-    # p_b_up_true = torch.ones_like(p_b_up_pred)
+    v_b_up_true = torch.full_like(v_b_up_pred, -1 * in_velocity)
+    p_b_up_true = torch.ones_like(p_b_up_pred)
     
-    # bc_up_loss_u = torch.mean(torch.square(u_b_up_pred))
-    # bc_up_loss_v = torch.mean(torch.square(v_b_up_pred - v_b_up_true))
-    # bc_up_loss_w = torch.mean(torch.square(w_b_up_pred))
-    # bc_up_loss_p = torch.mean(torch.square(p_b_up_pred - p_b_up_true))
+    bc_up_loss_u = torch.mean(torch.square(u_b_up_pred))
+    bc_up_loss_v = torch.mean(torch.square(v_b_up_pred - v_b_up_true))
+    bc_up_loss_w = torch.mean(torch.square(w_b_up_pred))
+    bc_up_loss_p = torch.mean(torch.square(p_b_up_pred - p_b_up_true))
 
-    # bc_up_loss = 100 * (1/4) * (bc_up_loss_u + bc_up_loss_v + bc_up_loss_w + bc_up_loss_p)
-    bc_up_loss = torch.tensor(0)
+    bc_up_loss = 100 * (1/4) * (bc_up_loss_u + bc_up_loss_v + bc_up_loss_w + bc_up_loss_p)
 
     # Object surface boundary conditions loss
     output_s = self(input_s)
@@ -284,17 +257,16 @@ class PINN(nn.Module):
     # total loss
     total_loss =  c1 * pde_ns_loss + \
                   c2 * pde_ps_loss + \
-                  c3 * ic_loss + \
-                  c4 * bc_in_loss + \
-                  c5 * bc_out_loss + \
-                  c6 * bc_left_loss + \
-                  c7 * bc_right_loss + \
-                  c8 * bc_down_loss + \
-                  c9 * bc_up_loss + \
-                  c10 * no_slip_loss + \
-                  c11 * real_data_loss
+                  c3 * bc_in_loss + \
+                  c4 * bc_out_loss + \
+                  c5 * bc_left_loss + \
+                  c6 * bc_right_loss + \
+                  c7 * bc_down_loss + \
+                  c8 * bc_up_loss + \
+                  c9 * no_slip_loss + \
+                  c10 * real_data_loss
 
-    return total_loss, pde_ns_loss, pde_ps_loss, ic_loss, \
+    return total_loss, pde_ns_loss, pde_ps_loss, \
            bc_in_loss, bc_out_loss, \
            bc_left_loss, bc_right_loss, \
            bc_down_loss, bc_up_loss, \
@@ -306,9 +278,9 @@ class PINN(nn.Module):
       self, 
       s_df: pd.DataFrame, u_df: pd.DataFrame,
       optimizer: torch.optim.Optimizer, 
-      Nf: int, N0: int, Nb: int, Ns: int, Nu: int, 
-      x_max: float, y_max: float, z_max: float, t_max: float, 
-      c1: float, c2: float, c3: float, c4: float, c5: float, c6: float, c7: float, c8: float, c9: float, c10: float, c11: float,
+      Nf: int, Nb: int, Ns: int, Nu: int, 
+      x_max: float, y_max: float, z_max: float, 
+      c1: float, c2: float, c3: float, c4: float, c5: float, c6: float, c7: float, c8: float, c9: float, c10: float,
       in_velocity: int, 
       mu: float, rho: float, 
       device: torch.device
@@ -316,18 +288,17 @@ class PINN(nn.Module):
 
     optimizer.zero_grad()
 
-    training_input = self.__generate_inputs(s_df, u_df, x_max, y_max, z_max, t_max, Nf, N0, Nb, Ns, Nu, device)
+    training_input = self.__generate_inputs(s_df, u_df, x_max, y_max, z_max, Nf, Nb, Ns, Nu, device)
 
-    total_loss, pde_ns_loss, pde_ps_loss, ic_loss, bc_in_loss, bc_out_loss, bc_left_loss, bc_right_loss, bc_down_loss, bc_up_loss, no_slip_loss, real_data_loss = self.loss(
+    total_loss, pde_ns_loss, pde_ps_loss, bc_in_loss, bc_out_loss, bc_left_loss, bc_right_loss, bc_down_loss, bc_up_loss, no_slip_loss, real_data_loss = self.loss(
                     *training_input,
                     in_velocity,
                     mu, rho,
-                    c1=c1, c2=c2, c3=c3, c4=c4, c5=c5, c6=c6, c7=c7, c8=c8, c9=c9, c10=c10, c11=c11)
+                    c1=c1, c2=c2, c3=c3, c4=c4, c5=c5, c6=c6, c7=c7, c8=c8, c9=c9, c10=c10)
 
     self.current_total_loss = total_loss.item()
     self.current_pde_ns_loss = pde_ns_loss.item()
     self.current_pde_ps_loss = pde_ps_loss.item()
-    self.current_ic_loss = ic_loss.item()
     self.current_bc_in_loss = bc_in_loss.item()
     self.current_bc_out_loss = bc_out_loss.item()
     self.current_bc_left_loss = bc_left_loss.item()
@@ -346,23 +317,22 @@ class PINN(nn.Module):
       self, 
       s_df: pd.DataFrame, u_df: pd.DataFrame, 
       Nf: int, N0: int, Nb: int, Ns: int, Nu: int, 
-      x_max: float, y_max: float, z_max: float, t_max: float, 
+      x_max: float, y_max: float, z_max: float, 
       in_velocity: int, 
       mu: float, rho: float, 
       device: torch.device,
-      c1 = 1., c2 = 1., c3 = 1., c4 = 1., c5 = 1., c6 = 1., c7 = 1., c8 = 1., c9 = 1., c10=1., c11=1.) -> torch.Tensor:
+      c1 = 1., c2 = 1., c3 = 1., c4 = 1., c5 = 1., c6 = 1., c7 = 1., c8 = 1., c9 = 1., c10=1.) -> torch.Tensor:
 
     Nf = utils.nearest_power_of_2(Nf)
-    N0 = utils.nearest_power_of_2(N0)
     Nb = utils.nearest_power_of_2(Nb)
     Ns = utils.nearest_power_of_2(Ns)
 
-    training_input = self.__generate_inputs(s_df, u_df, x_max, y_max, z_max, t_max, Nf, N0, Nb, Ns, Nu, device)
+    training_input = self.__generate_inputs(s_df, u_df, x_max, y_max, z_max, Nf, Nb, Ns, Nu, device)
 
     return [_loss.item() for _loss in self.loss(*training_input,
                                                 in_velocity,
                                                 mu, rho,
-                                                c1=c1, c2=c2, c3=c3, c4=c4, c5=c5, c6=c6, c7=c7, c8=c8, c9=c9, c10=c10, c11=c11)]
+                                                c1=c1, c2=c2, c3=c3, c4=c4, c5=c5, c6=c6, c7=c7, c8=c8, c9=c9, c10=c10)]
 
 
   def train_pinn(
@@ -371,41 +341,39 @@ class PINN(nn.Module):
         optimizer: torch.optim.Optimizer, 
         s_df: pd.DataFrame,
         u_df: pd.DataFrame,
-        Nf: int, N0: int, Nb: int, Ns: int, Nu: int,
-        x_max: float, y_max: float, z_max: float, t_max: float,
+        Nf: int, Nb: int, Ns: int, Nu: int,
+        x_max: float, y_max: float, z_max: float,
         in_velocity: int,
         mu: float, rho: float,
         device: torch.device,
         checkpoint_epochs: int,
         model_dir: str,
-        c1 = 1., c2 = 1., c3 = 1., c4 = 1., c5 = 1., c6 = 1., c7 = 1., c8 = 1., c9 = 1., c10=1., c11=1.):
+        c1 = 1., c2 = 1., c3 = 1., c4 = 1., c5 = 1., c6 = 1., c7 = 1., c8 = 1., c9 = 1., c10=1.):
 
     print("=======================================================")
     print(self)
     print(f"Model name: {self.model_name}")
     print(f"Number of epochs: {epochs}")
     print(f"Number of collocation points Nf: {Nf}")
-    print(f"Number of initial condition points N0: {N0}")
     print(f"Number of boundary condition points Nb: {Nb}")
     print(f"Number of object surface points Ns: {Ns}")
     print(f"Number of real data points Nu: {Nu}")
-    print(f"X max: {x_max}, Y max: {y_max}, Z max: {z_max}, T max: {t_max}")
+    print(f"X max: {x_max}, Y max: {y_max}, Z max: {z_max}")
     print(f"mu: {mu}, rho: {rho}")
-    print(f"c1: {c1}, c2: {c2}, c3: {c3}, c4: {c4}, c5: {c5}, c6: {c6}, c7: {c7}, c8: {c8}, c9: {c9}, c10: {c10}, c11: {c11}")
+    print(f"c1: {c1}, c2: {c2}, c3: {c3}, c4: {c4}, c5: {c5}, c6: {c6}, c7: {c7}, c8: {c8}, c9: {c9}, c10: {c10}")
     print(f"Inflow velocity: {in_velocity}")
     print(f"Device: {device}")
     print(f"Checkpoint epochs: {checkpoint_epochs}")
     print(f"Model directory: {model_dir}")
     print("=======================================================")
-    print("=> converting Nf, N0, Nb, Ns, Nu to nearest power of 2...") # Quasi - Monte Carlo sampling requirement
+    print("=> converting Nf, Nb, Ns, Nu to nearest power of 2...") # Quasi - Monte Carlo sampling requirement
 
     Nf = utils.nearest_power_of_2(Nf)
-    N0 = utils.nearest_power_of_2(N0)
     Nb = utils.nearest_power_of_2(Nb)
     Ns = utils.nearest_power_of_2(Ns)
     Nu = utils.nearest_power_of_2(Nu)
 
-    print(f"Nf: {Nf}, N0: {N0}, Nb: {Nb}, Ns: {Ns}, Nu: {Nu}")
+    print(f"Nf: {Nf}, Nb: {Nb}, Ns: {Ns}, Nu: {Nu}")
     print("=======================================================")
     print("=> starting training...")
     print("=======================================================")
@@ -420,16 +388,15 @@ class PINN(nn.Module):
                         s_df=s_df, 
                         u_df=u_df, 
                         optimizer=optimizer, 
-                        Nf=Nf, N0=N0, Nb=Nb, Ns=Ns, Nu=Nu,
-                        x_max=x_max, y_max=y_max, z_max=z_max, t_max=t_max,
-                        c1=c1, c2=c2, c3=c3, c4=c4, c5=c5, c6=c6, c7=c7, c8=c8, c9=c9, c10=c10, c11=c11,
+                        Nf=Nf, Nb=Nb, Ns=Ns, Nu=Nu,
+                        x_max=x_max, y_max=y_max, z_max=z_max,
+                        c1=c1, c2=c2, c3=c3, c4=c4, c5=c5, c6=c6, c7=c7, c8=c8, c9=c9, c10=c10,
                         in_velocity=in_velocity,
                         mu=mu, rho=rho,
                         device=device))
 
         self.__log_metrics(self.current_total_loss, 
                            self.current_pde_ns_loss, self.current_pde_ps_loss, 
-                           self.current_ic_loss, 
                            self.current_bc_in_loss, self.current_bc_out_loss, 
                            self.current_bc_left_loss, self.current_bc_right_loss, 
                            self.current_bc_down_loss, self.current_bc_up_loss, 
@@ -452,7 +419,7 @@ class PINN(nn.Module):
 
   def __compute_b(
         self, 
-        u: torch.Tensor, v: torch.Tensor, w: torch.Tensor, t: torch.Tensor, 
+        u: torch.Tensor, v: torch.Tensor, w: torch.Tensor, 
         u_x: torch.Tensor, u_y: torch.Tensor, u_z: torch.Tensor, 
         v_x: torch.Tensor, v_y: torch.Tensor, v_z: torch.Tensor, 
         w_x: torch.Tensor, w_y: torch.Tensor, w_z: torch.Tensor, 
@@ -465,128 +432,95 @@ class PINN(nn.Module):
     # Calculate the divergence of the velocity field
     div_u = u_x + v_y + w_z
 
-    # Time derivative of the divergence of the velocity field
-    div_u_t = utils.grad(div_u, t, create_graph=False)
-
     # Convective acceleration term (tensor product of velocity gradient with its transpose)
-    convective_acc = (u * u_x + v * u_y + w * u_z +
-                      u * v_x + v * v_y + w * v_z +
-                      u * w_x + v * w_y + w * w_z)
-    
-    return rho * (div_u_t + convective_acc)
+    convective_acc = u * u_x + v * v_y + w * w_z
+
+    return rho * convective_acc
 
 
   def __generate_inputs(
         self, 
         s_df: pd.DataFrame, u_df: pd.DataFrame, 
-        x_max: float, y_max: float, z_max: float, t_max: float, 
-        Nf: int, N0: int, Nb: int, Ns: int, Nu: int, 
+        x_max: float, y_max: float, z_max: float,  
+        Nf: int, Nb: int, Ns: int, Nu: int, 
         device: torch.device) -> tuple:
 
     # collocation points
-    samples_f = utils.qmc_sample_points_in_domain_4d_space_time(_x_min=0, _x_max=x_max, 
-                                                                _y_min=0, _y_max=y_max, 
-                                                                _z_min=0, _z_max=y_max, 
-                                                                _t_min=0, _t_max=t_max, 
-                                                                num_samples=Nf)
+    samples_f = utils.qmc_sample_points_in_domain_3d(_x_min=0, _x_max=x_max, 
+                                                     _y_min=0, _y_max=y_max, 
+                                                     _z_min=0, _z_max=y_max, 
+                                                     num_samples=Nf)
 
     x_f = utils.tensor_from_array(samples_f[0], device=device, requires_grad=True)
     y_f = utils.tensor_from_array(samples_f[1], device=device, requires_grad=True)
     z_f = utils.tensor_from_array(samples_f[2], device=device, requires_grad=True)
-    t_f = utils.tensor_from_array(samples_f[3], device=device, requires_grad=True)
-    # xyzt_f = utils.stack_xyzt_tensors(x_f, y_f, z_f, t_f)
-    # if stacked in a single tensor, the gradients are not computed correctly
-
-    # initial condition points (t=0)
-    samples_0 = utils.qmc_sample_points_in_domain_3d(_x_min=0, _x_max=x_max, 
-                                                     _y_min=0, _y_max=y_max, 
-                                                     _z_min=0, _z_max=z_max, 
-                                                     num_samples=N0)
-
-    x0 = utils.tensor_from_array(samples_0[0], device=device, requires_grad=False)
-    y0 = utils.tensor_from_array(samples_0[1], device=device, requires_grad=False)
-    z0 = utils.tensor_from_array(samples_0[2], device=device, requires_grad=False)
-    t0 = utils.tensor_from_array(utils.zeros(N0), device=device, requires_grad=False)
-    xyzt_0 = utils.stack_xyzt_tensors(x0, y0, z0, t0)
 
     # boundary condition points
     ## inflow, y=1
     Nb_in = utils.nearest_power_of_2(int(Nb/6))
-    samples_b_in = utils.qmc_sample_points_in_domain_3d_space_time(_x_min=0, _x_max=x_max,
-                                                                   _y_min=0, _y_max=z_max,
-                                                                   _t_min=0, _t_max=t_max,
-                                                                   num_samples=Nb_in)
+    samples_b_in = utils.qmc_sample_points_in_domain_2d(_x_min=0, _x_max=x_max,
+                                                        _y_min=0, _y_max=z_max,
+                                                        num_samples=Nb_in)
 
     x_b_in = utils.tensor_from_array(samples_b_in[0], device=device, requires_grad=False)
     y_b_in = utils.tensor_from_array(utils.ones(Nb_in), device=device, requires_grad=False)
     z_b_in = utils.tensor_from_array(samples_b_in[1], device=device, requires_grad=False)
-    t_b_in = utils.tensor_from_array(samples_b_in[2], device=device, requires_grad=False)
-    xyzt_b_in = utils.stack_xyzt_tensors(x_b_in, y_b_in, z_b_in, t_b_in)
+    xyz_b_in = utils.stack_xyz_tensors(x_b_in, y_b_in, z_b_in)
 
     ## outflow, y=0
     Nb_out = utils.nearest_power_of_2(int(Nb/6))
-    samples_b_out = utils.qmc_sample_points_in_domain_3d_space_time(_x_min=0, _x_max=x_max,
-                                                                _y_min=0, _y_max=z_max,
-                                                                _t_min=0, _t_max=t_max,
-                                                                num_samples=Nb_out)
+    samples_b_out = utils.qmc_sample_points_in_domain_2d(_x_min=0, _x_max=x_max,
+                                                         _y_min=0, _y_max=z_max,
+                                                         num_samples=Nb_out)
 
     x_b_out = utils.tensor_from_array(samples_b_out[0], device=device, requires_grad=False)
     y_b_out = utils.tensor_from_array(utils.zeros(Nb_out), device=device, requires_grad=False)
     z_b_out = utils.tensor_from_array(samples_b_out[1], device=device, requires_grad=False)
-    t_b_out = utils.tensor_from_array(samples_b_out[2], device=device, requires_grad=False)
-    xyzt_b_out = utils.stack_xyzt_tensors(x_b_out, y_b_out, z_b_out, t_b_out)
+    xyz_b_out = utils.stack_xyz_tensors(x_b_out, y_b_out, z_b_out)
 
     ## left, x=0
     Nb_left = utils.nearest_power_of_2(int(Nb/6))
-    samples_b_left = utils.qmc_sample_points_in_domain_3d_space_time(_x_min=0, _x_max=y_max,
-                                                                     _y_min=0, _y_max=z_max,
-                                                                     _t_min=0, _t_max=t_max,
-                                                                     num_samples=Nb_left)
+    samples_b_left = utils.qmc_sample_points_in_domain_2d(_x_min=0, _x_max=y_max,
+                                                          _y_min=0, _y_max=z_max,
+                                                          num_samples=Nb_left)
 
     x_b_left = utils.tensor_from_array(utils.zeros(Nb_left), device=device, requires_grad=False)
     y_b_left = utils.tensor_from_array(samples_b_left[0], device=device, requires_grad=False)
     z_b_left = utils.tensor_from_array(samples_b_left[1], device=device, requires_grad=False)
-    t_b_left = utils.tensor_from_array(samples_b_left[2], device=device, requires_grad=False)
-    xyzt_b_left = utils.stack_xyzt_tensors(x_b_left, y_b_left, z_b_left, t_b_left)
+    xyz_b_left = utils.stack_xyz_tensors(x_b_left, y_b_left, z_b_left)
 
     ## right, x=1
     Nb_right = utils.nearest_power_of_2(int(Nb/6))
-    samples_b_right = utils.qmc_sample_points_in_domain_3d_space_time(_x_min=0, _x_max=y_max,
-                                                                      _y_min=0, _y_max=z_max,
-                                                                      _t_min=0, _t_max=t_max,
-                                                                      num_samples=Nb_right)
+    samples_b_right = utils.qmc_sample_points_in_domain_2d(_x_min=0, _x_max=y_max,
+                                                           _y_min=0, _y_max=z_max,
+                                                           num_samples=Nb_right)
 
     x_b_right = utils.tensor_from_array(utils.ones(Nb_right), device=device, requires_grad=False)
     y_b_right = utils.tensor_from_array(samples_b_right[0], device=device, requires_grad=False)
     z_b_right = utils.tensor_from_array(samples_b_right[1], device=device, requires_grad=False)
-    t_b_right = utils.tensor_from_array(samples_b_right[2], device=device, requires_grad=False)
-    xyzt_b_right = utils.stack_xyzt_tensors(x_b_right, y_b_right, z_b_right, t_b_right)
+    xyz_b_right = utils.stack_xyz_tensors(x_b_right, y_b_right, z_b_right)
 
     ## down, z=0
     Nb_down = utils.nearest_power_of_2(int(Nb/6))
-    samples_b_down = utils.qmc_sample_points_in_domain_3d_space_time(_x_min=0, _x_max=x_max,
-                                                                     _y_min=0, _y_max=y_max,
-                                                                     _t_min=0, _t_max=t_max,
-                                                                     num_samples=Nb_down)
+    samples_b_down = utils.qmc_sample_points_in_domain_2d(_x_min=0, _x_max=x_max,
+                                                          _y_min=0, _y_max=y_max,
+                                                          num_samples=Nb_down)
 
     x_b_down = utils.tensor_from_array(samples_b_down[0], device=device, requires_grad=False)
     y_b_down = utils.tensor_from_array(samples_b_down[1], device=device, requires_grad=False)
     z_b_down = utils.tensor_from_array(utils.zeros(Nb_down), device=device, requires_grad=False)
-    t_b_down = utils.tensor_from_array(samples_b_down[2], device=device, requires_grad=False)
-    xyzt_b_down = utils.stack_xyzt_tensors(x_b_down, y_b_down, z_b_down, t_b_down)
+    xyz_b_down = utils.stack_xyz_tensors(x_b_down, y_b_down, z_b_down)
 
     ## up, z=1
     Nb_up = utils.nearest_power_of_2(int(Nb/6))
-    samples_b_up = utils.qmc_sample_points_in_domain_3d_space_time(_x_min=0, _x_max=x_max,
-                                                                   _y_min=0, _y_max=y_max,
-                                                                   _t_min=0, _t_max=t_max,
-                                                                   num_samples=Nb_up)
+    samples_b_up = utils.qmc_sample_points_in_domain_2d(_x_min=0, _x_max=x_max,
+                                                        _y_min=0, _y_max=y_max,
+                                                        num_samples=Nb_up)
 
     x_b_up = utils.tensor_from_array(samples_b_up[0], device=device, requires_grad=False)
     y_b_up = utils.tensor_from_array(samples_b_up[1], device=device, requires_grad=False)
     z_b_up = utils.tensor_from_array(utils.ones(Nb_up), device=device, requires_grad=False)
-    t_b_up = utils.tensor_from_array(samples_b_up[2], device=device, requires_grad=False)
-    xyzt_b_up = utils.stack_xyzt_tensors(x_b_up, y_b_up, z_b_up, t_b_up)
+    xyz_b_up = utils.stack_xyz_tensors(x_b_up, y_b_up, z_b_up)
 
     # points & normal vectors on the surface of the object
     ## sample Ns object surface points with the corresponding normals
@@ -594,25 +528,23 @@ class PINN(nn.Module):
 
     x_s, y_s, z_s = [utils.tensor_from_array(s_df.loc[sampled_indices_s, col].values, device=device, requires_grad=False) for col in ['x', 'y', 'z']]
     # n_x, n_y, n_z = [utils.tensor_from_array(norm_df.loc[sampled_indices_s, col].values, device=device, requires_grad=False) for col in ['x', 'y', 'z']]
-    t_s = utils.tensor_from_array(utils.sample_points_in_domain(0, t_max, Ns), device=device, requires_grad=False)
 
-    xyzt_s = utils.stack_xyzt_tensors(x_s, y_s, z_s, t_s)
+    xyz_s = utils.stack_xyz_tensors(x_s, y_s, z_s)
     # n_xyz = utils.stack_xyz_tensors(n_x, n_y, n_z)
 
     # points & velocity of the real measurements
     ## sample Nu points with the corresponding measurements
     sampled_indices_u = u_df.sample(n=Nu).index
 
-    x_u, y_u, z_u, u_u, v_u, w_u, t_u = [utils.tensor_from_array(u_df.loc[sampled_indices_u, col].values, device=device, requires_grad=False) for col in ['x', 'y', 'z', 'u', 'v', 'w', 't']]
-    xyzt_u = utils.stack_xyzt_tensors(x_u, y_u, z_u, t_u)
+    x_u, y_u, z_u, u_u, v_u, w_u = [utils.tensor_from_array(u_df.loc[sampled_indices_u, col].values, device=device, requires_grad=False) for col in ['x', 'y', 'z', 'u', 'v', 'w']]
+    xyz_u = utils.stack_xyz_tensors(x_u, y_u, z_u)
     uyw_u = utils.stack_xyz_tensors(u_u, v_u, w_u)
 
-    return (x_f, y_f, z_f, t_f, xyzt_0, xyzt_b_in, xyzt_b_out, xyzt_b_left, xyzt_b_right, xyzt_b_down, xyzt_b_up, xyzt_s, xyzt_u, uyw_u)
+    return (x_f, y_f, z_f, xyz_b_in, xyz_b_out, xyz_b_left, xyz_b_right, xyz_b_down, xyz_b_up, xyz_s, xyz_u, uyw_u)
 
 
   def __log_metrics(self, total_loss: float, 
                     pde_ns_loss: float, pde_ps_loss: float, 
-                    ic_loss: float, 
                     bc_in_loss: float, bc_out_loss: float, 
                     bc_left_loss: float, bc_right_loss: float, 
                     bc_down_loss: float, bc_up_loss: float, 
@@ -621,7 +553,6 @@ class PINN(nn.Module):
     self.logs['total_loss'].append(total_loss)
     self.logs['pde_ns_loss'].append(pde_ns_loss)
     self.logs['pde_ps_loss'].append(pde_ps_loss)
-    self.logs['ic_loss'].append(ic_loss)
     self.logs['bc_in_loss'].append(bc_in_loss)
     self.logs['bc_out_loss'].append(bc_out_loss)
     self.logs['bc_left_loss'].append(bc_left_loss)
@@ -644,7 +575,6 @@ class PINN(nn.Module):
                 f"Total Loss: {self.logs['total_loss'][-1]:.4f}, "
                 f"PDE Loss - Navier Stoker: {self.logs['pde_ns_loss'][-1]:.4f}, "
                 f"PDE Loss - Poisson: {self.logs['pde_ps_loss'][-1]:.4f}, "
-                f"IC Loss: {self.logs['ic_loss'][-1]:.4f}, "
                 f"BC Inlet Loss: {self.logs['bc_in_loss'][- 1]:.4f}, "
                 f"BC Outlet Loss: {self.logs['bc_out_loss'][- 1]:.4f}, "
                 f"BC Left Loss: {self.logs['bc_left_loss'][- 1]:.4f}, "
@@ -667,7 +597,6 @@ class PINN(nn.Module):
                   f"Total Loss: {self.logs['total_loss'][_epoch - 1]:.4f}, "
                   f"PDE Loss - Navier Stoker: {self.logs['pde_ns_loss'][_epoch - 1]:.4f}, "
                   f"PDE Loss - Poisson: {self.logs['pde_ps_loss'][_epoch - 1]:.4f}, "
-                  f"IC Loss: {self.logs['ic_loss'][_epoch - 1]:.4f}, "
                   f"BC Inlet Loss: {self.logs['bc_in_loss'][_epoch - 1]:.4f}, "
                   f"BC Outlet Loss: {self.logs['bc_out_loss'][_epoch - 1]:.4f}, "
                   f"BC Left Loss: {self.logs['bc_left_loss'][_epoch - 1]:.4f}, "
