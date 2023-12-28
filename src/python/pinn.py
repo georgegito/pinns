@@ -127,12 +127,12 @@ class PINN(nn.Module):
     ### Poisson equation
     f5 = p_xx + p_yy + p_zz - b
 
-    pde_ns_loss =  100 * (1/4) * torch.mean(torch.square(f1)) + \
-                        torch.mean(torch.square(f2)) + \
-                        torch.mean(torch.square(f3)) + \
-                        torch.mean(torch.square(f4))
+    pde_ns_loss = (1/4) * torch.mean(torch.square(f1)) + \
+                          torch.mean(torch.square(f2)) + \
+                          torch.mean(torch.square(f3)) + \
+                          torch.mean(torch.square(f4))
     
-    pde_ps_loss = 100 * torch.mean(torch.square(f5))
+    pde_ps_loss = torch.mean(torch.square(f5))
     
     # Boundary conditions loss
     ## Inlet: u = 0, v = -in_velocity, w = 0 & p = 1 for y = y_max
@@ -144,28 +144,28 @@ class PINN(nn.Module):
     bc_in_loss_u = torch.mean(torch.square(u_b_in_pred))
     bc_in_loss_v = torch.mean(torch.square(v_b_in_pred - v_b_in_true))
     bc_in_loss_w = torch.mean(torch.square(w_b_in_pred))
-    bc_in_loss = 100 * (1/3) * (bc_in_loss_u + bc_in_loss_v + bc_in_loss_w)
+    bc_in_loss = (1/3) * (bc_in_loss_u + bc_in_loss_v + bc_in_loss_w)
 
     ## Outlet: p = 1 for y = 0
     output_b_out = self(input_b_out)
     p_b_out_pred = output_b_out[:, 3]
     p_b_out_true = torch.ones_like(p_b_out_pred)
     bc_out_loss_p = torch.mean(torch.square(p_b_out_pred - p_b_out_true))
-    bc_out_loss = 100 * bc_out_loss_p
+    bc_out_loss = bc_out_loss_p
 
     ## Left (Far-field): p = 1 for x = 0
     output_b_left = self(input_b_left)
     p_b_left_pred = output_b_left[:, 3]
     p_b_left_true = torch.ones_like(p_b_left_pred)
     bc_left_loss_p = torch.mean(torch.square(p_b_left_pred - p_b_left_true))
-    bc_left_loss = 100 * bc_left_loss_p
+    bc_left_loss = bc_left_loss_p
 
     ## Right (Far-field): p = 1 for x = x_max
     output_b_right = self(input_b_right)
     p_b_right_pred = output_b_right[:, 3]
     p_b_right_true = torch.ones_like(p_b_right_pred)
     bc_right_loss_p = torch.mean(torch.square(p_b_right_pred - p_b_right_true))
-    bc_right_loss = 100 * bc_right_loss_p
+    bc_right_loss = bc_right_loss_p
 
     # Down (No-slip wall): u = 0, v = 0, w = 0 for z = 0
     output_b_down = self(input_b_down)
@@ -175,14 +175,14 @@ class PINN(nn.Module):
     bc_down_loss_u = torch.mean(torch.square(u_b_down_pred))
     bc_down_loss_v = torch.mean(torch.square(v_b_down_pred))
     bc_down_loss_w = torch.mean(torch.square(w_b_down_pred))
-    bc_down_loss = 100 * (1/3) * (bc_down_loss_u + bc_down_loss_v + bc_down_loss_w)
+    bc_down_loss = (1/3) * (bc_down_loss_u + bc_down_loss_v + bc_down_loss_w)
 
     # Up (Far-field Conditions): p = 1 for z = z_max
     output_b_up = self(input_b_up)
     p_b_up_pred = output_b_up[:, 3]
     p_b_up_true = torch.ones_like(p_b_up_pred)
     bc_up_loss_p = torch.mean(torch.square(p_b_up_pred - p_b_up_true))
-    bc_up_loss = 100 * bc_up_loss_p
+    bc_up_loss = bc_up_loss_p
 
     # Object surface boundary conditions loss
     output_s = self(input_s)
@@ -194,7 +194,7 @@ class PINN(nn.Module):
     no_slip_loss_u = torch.mean(torch.square(u_s_pred))
     no_slip_loss_v = torch.mean(torch.square(v_s_pred))
     no_slip_loss_w = torch.mean(torch.square(w_s_pred))
-    no_slip_loss = 100 * (1/3) * (no_slip_loss_u + no_slip_loss_v + no_slip_loss_w)
+    no_slip_loss = (1/3) * (no_slip_loss_u + no_slip_loss_v + no_slip_loss_w)
 
     # Real measurements loss
     # output_u = self(input_u)
@@ -207,12 +207,12 @@ class PINN(nn.Module):
     # real_data_loss_u = torch.mean(torch.square(u_u_pred - u_u_exp))
     # real_data_loss_v = torch.mean(torch.square(v_u_pred - v_u_exp))
     # real_data_loss_w = torch.mean(torch.square(w_u_pred - w_u_exp))
-    # real_data_loss = 100 * (1/3) * (real_data_loss_u + real_data_loss_v + real_data_loss_w)
+    # real_data_loss = (1/3) * (real_data_loss_u + real_data_loss_v + real_data_loss_w)
     real_data_loss = torch.tensor(0)
 
     # Impermeability condition loss
     # dot_products = torch.sum(output_s[:, :3] * normals, dim=1)
-    # imp_loss = 100 * torch.mean(torch.square(dot_products))
+    # imp_loss = torch.mean(torch.square(dot_products))
     imp_loss = torch.tensor(0)
 
     # total loss
