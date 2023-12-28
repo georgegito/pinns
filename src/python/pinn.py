@@ -397,10 +397,11 @@ class PINN(nn.Module):
     # rho: fluid density (either a constant or an array)
 
     # Calculate the divergence of the velocity field
-    div_u = u_x + v_y + w_z
+    # div_u = u_x + v_y + w_z
 
     # Convective acceleration term (tensor product of velocity gradient with its transpose)
-    convective_acc = u * u_x + v * v_y + w * w_z
+    convective_acc = u * u_x + v * u_y + w * u_z + u * v_x + v * v_y + w * v_z + u * w_x + v * w_y + w * w_z
+    # convective_acc = u * u_x + v * v_y + w * w_z
 
     return rho * convective_acc
 
