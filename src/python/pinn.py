@@ -153,21 +153,33 @@ class PINN(nn.Module):
     bc_out_loss_p = torch.mean(torch.square(p_b_out_pred - p_b_out_true))
     bc_out_loss = bc_out_loss_p
 
-    ## Left (Far-field): p = 1 for x = 0
+    # ## Left (Far-field): p = 1 for x = 0
+    # output_b_left = self(input_b_left)
+    # p_b_left_pred = output_b_left[:, 3]
+    # p_b_left_true = torch.ones_like(p_b_left_pred)
+    # bc_left_loss_p = torch.mean(torch.square(p_b_left_pred - p_b_left_true))
+    # bc_left_loss = bc_left_loss_p
+
+    ## Left (Slip): u = 0 for x = 0
     output_b_left = self(input_b_left)
-    p_b_left_pred = output_b_left[:, 3]
-    p_b_left_true = torch.ones_like(p_b_left_pred)
-    bc_left_loss_p = torch.mean(torch.square(p_b_left_pred - p_b_left_true))
-    bc_left_loss = bc_left_loss_p
+    u_b_left_pred = output_b_left[:, 0]
+    bc_left_loss_u = torch.mean(torch.square(u_b_left_pred))
+    bc_left_loss = bc_left_loss_u
 
-    ## Right (Far-field): p = 1 for x = x_max
+    # ## Right (Far-field): p = 1 for x = x_max
+    # output_b_right = self(input_b_right)
+    # p_b_right_pred = output_b_right[:, 3]
+    # p_b_right_true = torch.ones_like(p_b_right_pred)
+    # bc_right_loss_p = torch.mean(torch.square(p_b_right_pred - p_b_right_true))
+    # bc_right_loss = bc_right_loss_p
+
+    ## Right (Slip): u = 0 for x = x_max
     output_b_right = self(input_b_right)
-    p_b_right_pred = output_b_right[:, 3]
-    p_b_right_true = torch.ones_like(p_b_right_pred)
-    bc_right_loss_p = torch.mean(torch.square(p_b_right_pred - p_b_right_true))
-    bc_right_loss = bc_right_loss_p
+    u_b_right_pred = output_b_right[:, 0]
+    bc_right_loss_u = torch.mean(torch.square(u_b_right_pred))
+    bc_right_loss = bc_right_loss_u
 
-    # Down (No-slip wall): u = 0, v = 0, w = 0 for z = 0
+    ## Down (No-slip wall): u = 0, v = 0, w = 0 for z = 0
     output_b_down = self(input_b_down)
     u_b_down_pred = output_b_down[:, 0]
     v_b_down_pred = output_b_down[:, 1]
@@ -177,12 +189,18 @@ class PINN(nn.Module):
     bc_down_loss_w = torch.mean(torch.square(w_b_down_pred))
     bc_down_loss = (1/3) * (bc_down_loss_u + bc_down_loss_v + bc_down_loss_w)
 
-    # Up (Far-field Conditions): p = 1 for z = z_max
+    # ## Up (Far-field Conditions): p = 1 for z = z_max
+    # output_b_up = self(input_b_up)
+    # p_b_up_pred = output_b_up[:, 3]
+    # p_b_up_true = torch.ones_like(p_b_up_pred)
+    # bc_up_loss_p = torch.mean(torch.square(p_b_up_pred - p_b_up_true))
+    # bc_up_loss = bc_up_loss_p
+
+    ## Up (Slip): w = 0 for z = z_max
     output_b_up = self(input_b_up)
-    p_b_up_pred = output_b_up[:, 3]
-    p_b_up_true = torch.ones_like(p_b_up_pred)
-    bc_up_loss_p = torch.mean(torch.square(p_b_up_pred - p_b_up_true))
-    bc_up_loss = bc_up_loss_p
+    w_b_up_pred = output_b_up[:, 2]
+    bc_up_loss_w = torch.mean(torch.square(w_b_up_pred))
+    bc_up_loss = bc_up_loss_w
 
     # Object surface boundary conditions loss
     output_s = self(input_s)
