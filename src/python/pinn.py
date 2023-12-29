@@ -8,17 +8,25 @@ import pandas as pd
 class PINN(nn.Module):
 
   def __init__(self, input_dim: int, output_dim: int, hidden_units: int, model_name: str):
+
     super(PINN, self).__init__()
+
     self.layers = nn.ModuleList()
+
     in_units = input_dim
+
     for units in hidden_units:
       layer = nn.Linear(in_units, units)
       nn.init.xavier_normal_(layer.weight)  # Apply Xavier initialization
       self.layers.append(layer)
       in_units = units
+
     output_layer = nn.Linear(in_units, output_dim)
+
     nn.init.xavier_normal_(output_layer.weight)  # Apply Xavier initialization
+
     self.layers.append(output_layer)
+
     self.logs = {"total_loss": [], 
                  "pde_ns_loss": [], "pde_ps_loss": [],
                  "bc_in_loss": [], "bc_out_loss": [], 
@@ -66,7 +74,6 @@ class PINN(nn.Module):
       input_s: torch.Tensor,
       input_u_points: torch.Tensor,
       output_u_exp: torch.Tensor,
-      normals: torch.Tensor,
       in_velocity: torch.Tensor,
       mu: float, rho: float, 
       c1: float, c2: float, c3: float, c4: float, c5: float, c6: float, c7: float, c8: float, c9: float, c10: float, c11:float
@@ -257,7 +264,7 @@ class PINN(nn.Module):
 
   def closure(
       self, 
-      s_df: pd.DataFrame, n_df: pd.DataFrame, u_df: pd.DataFrame,
+      s_df: pd.DataFrame, u_df: pd.DataFrame,
       optimizer: torch.optim.Optimizer, 
       Nf: int, Nb: int, Ns: int, Nu: int, 
       x_max: float, y_max: float, z_max: float, 
@@ -269,7 +276,7 @@ class PINN(nn.Module):
 
     optimizer.zero_grad()
 
-    training_input = self.__generate_inputs(s_df, n_df, u_df, x_max, y_max, z_max, Nf, Nb, Ns, Nu, device)
+    training_input = self.__generate_inputs(s_df, u_df, x_max, y_max, z_max, Nf, Nb, Ns, Nu, device)
 
     total_loss, pde_ns_loss, pde_ps_loss, bc_in_loss, bc_out_loss, bc_left_loss, bc_right_loss, bc_down_loss, bc_up_loss, no_slip_loss, real_data_loss, imp_loss = self.loss(
                     *training_input,
@@ -297,7 +304,7 @@ class PINN(nn.Module):
 
   def eval_pinn(
       self, 
-      s_df: pd.DataFrame, n_df: pd.DataFrame, u_df: pd.DataFrame, 
+      s_df: pd.DataFrame, u_df: pd.DataFrame, 
       Nf: int, N0: int, Nb: int, Ns: int, Nu: int, 
       x_max: float, y_max: float, z_max: float, 
       in_velocity: int, 
@@ -322,7 +329,6 @@ class PINN(nn.Module):
         epochs: int, 
         optimizer: torch.optim.Optimizer, 
         s_df: pd.DataFrame,
-        n_df: pd.DataFrame,
         u_df: pd.DataFrame,
         Nf: int, Nb: int, Ns: int, Nu: int,
         x_max: float, y_max: float, z_max: float,
@@ -369,7 +375,6 @@ class PINN(nn.Module):
         optimizer.step(lambda: 
                       self.closure(
                         s_df=s_df, 
-                        n_df=n_df, 
                         u_df=u_df, 
                         optimizer=optimizer, 
                         Nf=Nf, Nb=Nb, Ns=Ns, Nu=Nu,
@@ -426,7 +431,7 @@ class PINN(nn.Module):
 
   def __generate_inputs(
         self, 
-        s_df: pd.DataFrame, n_df: pd.DataFrame, u_df: pd.DataFrame, 
+        s_df: pd.DataFrame, u_df: pd.DataFrame, 
         x_max: float, y_max: float, z_max: float,  
         Nf: int, Nb: int, Ns: int, Nu: int, 
         device: torch.device) -> tuple:
@@ -513,10 +518,10 @@ class PINN(nn.Module):
     sampled_indices_s = s_df.sample(n=Ns).index
 
     x_s, y_s, z_s = [utils.tensor_from_array(s_df.loc[sampled_indices_s, col].values, device=device, requires_grad=False) for col in ['x', 'y', 'z']]
-    n_x, n_y, n_z = [utils.tensor_from_array(n_df.loc[sampled_indices_s, col].values, device=device, requires_grad=False) for col in ['x', 'y', 'z']]
+    # n_x, n_y, n_z = [utils.tensor_from_array(n_df.loc[sampled_indices_s, col].values, device=device, requires_grad=False) for col in ['x', 'y', 'z']]
 
     xyz_s = utils.stack_xyz_tensors(x_s, y_s, z_s)
-    n_xyz = utils.stack_xyz_tensors(n_x, n_y, n_z)
+    # n_xyz = utils.stack_xyz_tensors(n_x, n_y, n_z)
 
     # points & velocity of the real measurements
     ## sample Nu points with the corresponding measurements
@@ -526,7 +531,7 @@ class PINN(nn.Module):
     xyz_u = utils.stack_xyz_tensors(x_u, y_u, z_u)
     uyw_u = utils.stack_xyz_tensors(u_u, v_u, w_u)
 
-    return (x_f, y_f, z_f, xyz_b_in, xyz_b_out, xyz_b_left, xyz_b_right, xyz_b_down, xyz_b_up, xyz_s, xyz_u, uyw_u, n_xyz)
+    return (x_f, y_f, z_f, xyz_b_in, xyz_b_out, xyz_b_left, xyz_b_right, xyz_b_down, xyz_b_up, xyz_s, xyz_u, uyw_u)
 
 
   def __log_metrics(self, total_loss: float, 
