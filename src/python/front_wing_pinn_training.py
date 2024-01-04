@@ -5,93 +5,67 @@
 
 # ## PINN
 
-# In[ ]:
-
-
 import pandas as pd
 import torch
 from pinn import PINN
 import os
+from dotenv import load_dotenv
+import yaml
 
 
-# In[ ]:
-
-
-data_dir = "/Users/ggito/repos/pinns/data/front_wing"
+load_dotenv()
+data_dir = os.environ.get("DATA_DIR")
 model_dir = os.path.join(data_dir, "models")
 
 points_filename = "points_final.csv"
 measurements_filename = "measurements.csv"
-
-
-# In[ ]:
-
 
 if torch.backends.mps.is_available():
   device = torch.device("mps")
 elif torch.cuda.is_available():
   device = torch.device("cuda")
 else:
+  device = "cpu"
   print("GPU device not found.")
 
-print(device)
-
-
-# In[ ]:
-
+print(f"Device: {device}")
 
 wing_df = pd.read_csv(os.path.join(data_dir, points_filename))
 measurements_df = pd.read_csv(os.path.join(data_dir, measurements_filename))
 
+with open("config.yaml", 'r') as file:
+    config = yaml.safe_load(file)
 
-# In[ ]:
-
-
-# Density (rho): 1.2041kg/m^3
-# Dynamic viscosity (mu): 1.81e-5 kg/m.s
-rho = 1
-mu = 1
+# Air Density (rho): 1.2041kg/m^3
+# Air Dynamic viscosity (mu): 1.81e-5 kg/m.s
+rho = config["rho"]
+mu = config["mu"]
 
 # m/s
-in_velocity = 10
+in_velocity = config["in_velocity"]
 
 # Domain limits
-x_max = 1
-y_max = 1
-z_max = 1
-
-
-# In[ ]:
-
+x_max = config["x_max"]
+y_max = config["y_max"]
+z_max = config["z_max"]
 
 input_dim = 3
 output_dim = 4
-hidden_units = [1000, 1000, 1000]
+hidden_units = config["hidden_units"]
 
-model_name = "v30"
+model_name = config["model_name"]
 
 pinn = PINN(input_dim, output_dim, hidden_units, model_name).to(device)
 
-
-# In[ ]:
-
-
 optimizer = torch.optim.LBFGS(pinn.parameters(), lr=1, line_search_fn="strong_wolfe")
 
+epochs = config["epochs"]
+checkpoint_epochs = config["checkpoint_epochs"]
 
-# In[ ]:
-
-
-epochs = 3000
-checkpoint_epochs = 50
-
-Nf = 100   # num of collocation points -> pde evaluation
-Nb = 100   # num of points to evaluate boundary conditions
-Nw = 100   # num of points of the surface of the front wing to evaluate boundary conditions
-Nu = 2     # num of points of real data
-
-
-# In[ ]:
+Nf = config["Nf"]   # num of collocation points -> pde evaluation
+Nb = config["Nb"]   # num of points to evaluate boundary conditions
+Nw = config["Nw"]   # num of points of the surface of the front wing to evaluate boundary conditions
+Nu = config["Nu"]   # num of points of real data
 
 
 pinn.train_pinn(
