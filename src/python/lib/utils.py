@@ -170,3 +170,12 @@ def set_optimizer_learning_rate(optimizer: torch.optim.Optimizer, learning_rate:
 
 def nearest_power_of_2(n):
     return 2 ** round(np.log2(n))
+
+
+def get_device() -> torch.device:
+  if torch.backends.mps.is_available():
+    return torch.device("mps")
+  elif torch.cuda.is_available():
+    return torch.device("cuda")
+  else:
+    return torch.device("cpu")

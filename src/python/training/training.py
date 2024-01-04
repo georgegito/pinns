@@ -5,28 +5,28 @@
 
 # ## PINN
 
-import pandas as pd
-import torch
-from pinn import PINN
 import os
 from dotenv import load_dotenv
-import yaml
-
+import sys
 
 load_dotenv()
+
+lib_dir = os.environ.get("LIB_DIR")
+sys.path.append(lib_dir)
+
 data_dir = os.environ.get("DATA_DIR")
 model_dir = os.path.join(data_dir, "models")
 
 points_filename = "points_final.csv"
 measurements_filename = "measurements.csv"
 
-if torch.backends.mps.is_available():
-  device = torch.device("mps")
-elif torch.cuda.is_available():
-  device = torch.device("cuda")
-else:
-  device = "cpu"
-  print("GPU device not found.")
+import pandas as pd
+import torch
+import yaml
+from pinn import PINN
+import utils
+
+device = utils.get_device()
 
 print(f"Device: {device}")
 
