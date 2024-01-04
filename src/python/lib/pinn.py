@@ -47,8 +47,8 @@ class PINN(nn.Module):
     self.current_real_data_loss = -1
     self.current_imp_loss = -1
     self.epoch = 0
+    self.hidden_units = hidden_units
     self.model_name = model_name
-
 
   def forward(self, input: torch.Tensor) -> torch.Tensor:
     for layer in self.layers[:-1]:
@@ -607,7 +607,7 @@ class PINN(nn.Module):
   def __save_checkpoint(self, optimizer: torch.optim.Optimizer, file_path: str):
 
     print("=> saving checkpoint '{}'".format(file_path))
-    state = {'name': self.model_name, 'epoch': self.epoch, 'state_dict': self.state_dict(),
+    state = {'name': self.model_name, 'hidden_units': self.hidden_units, 'epoch': self.epoch, 'state_dict': self.state_dict(),
               'optimizer': optimizer.state_dict(), "logs": self.logs}
     torch.save(state, file_path)
 
@@ -617,6 +617,11 @@ class PINN(nn.Module):
       if os.path.isfile(file_path):
           print("=> loading checkpoint '{}'".format(file_path))
           checkpoint = torch.load(file_path)
+
+          if self.hidden_units != checkpoint['hidden_units']:
+            print("=> model architecture mismatch, exiting...")
+            exit
+
           self.load_state_dict(checkpoint['state_dict'])
           self.model_name = checkpoint['name']
           self.epoch = checkpoint['epoch']
@@ -658,3 +663,38 @@ class PINN(nn.Module):
 
     file_path = os.path.join(checkpoint_dir, model_name, str(checkpoint_num) + ".pt")
     return self.__load_checkpoint(optimizer, file_path, mode)
+  
+  @staticmethod
+  def load_from_checkpoint_for_testing(checkpoint_dir: str, model_name: str, checkpoint_num: int, input_dim: int, output_dim: int) -> 'PINN':
+
+    file_path = os.path.join(checkpoint_dir, model_name, str(checkpoint_num) + ".pt")
+
+    if os.path.isfile(file_path):
+      print("=> loading checkpoint '{}'".format(file_path))
+      checkpoint = torch.load(file_path)
+
+      _hidden_units = checkpoint['hidden_units']
+
+      _pinn = PINN(hidden_units=_hidden_units, model_name=model_name, input_dim=input_dim, output_dim=output_dim)
+
+      _pinn.epoch = checkpoint['epoch']
+      _pinn.logs = checkpoint['logs']
+
+      _pinn.load_state_dict(checkpoint['state_dict'])
+
+      print("=> loaded checkpoint '{}' (epoch {})"
+                .format(file_path, checkpoint['epoch']))
+    else:
+      print("=> no checkpoint found at '{}'".format(file_path))
+      return None
+
+    _pinn.eval()
+
+    return _pinn
+
+
+
+    model = PINN(hidden_units=hidden_units, model_name=model_name)
+    model.load_checkpoint_num(optimizer=torch.optim.Adam(model.parameters()), checkpoint_dir=checkpoint_dir, model_name=model_name, checkpoint_num=checkpoint_num, mode='inference')
+    model.to(device)
+    return model

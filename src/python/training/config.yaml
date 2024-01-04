@@ -2,9 +2,9 @@ model_name: "v30"
 
 hidden_units: [1000, 1000, 1000]
 
-epochs: 3000
+epochs: 10
 
-checkpoint_epochs: 50
+checkpoint_epochs: 5
 
 in_velocity: 10
 
