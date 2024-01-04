@@ -1,0 +1,13 @@
+model_name: "v30"
+
+model_checkpoint_num: 10
+
+hidden_units: [1000, 1000, 1000] # TODO
+
+x_max: 1
+y_max: 1
+z_max: 1
+
+Nx: 20
+Ny: 20
+Nz: 20
