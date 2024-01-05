@@ -369,8 +369,15 @@ class PINN(nn.Module):
     print("=> starting training...")
     print("=======================================================")
 
+
+    training_clock = utils.Clock()
+    training_clock.start()
+
     try:
       while self.epoch < epochs:
+
+        epoch_clock = utils.Clock()
+        epoch_clock.start()
 
         self.epoch += 1
 
@@ -394,7 +401,10 @@ class PINN(nn.Module):
                            self.current_no_slip_loss, self.current_real_data_loss, 
                            self.current_imp_loss)
         self.print_current_metrics() 
-        
+
+        epoch_clock.stop()
+        print(f"\t{epoch_clock}")
+
         if np.isnan(self.current_total_loss):
           print("=> NaN loss...")
           self, optimizer = self.load_last_checkpoint(optimizer, model_dir)
@@ -403,11 +413,22 @@ class PINN(nn.Module):
         if self.epoch % checkpoint_epochs == 0:
           checkpoint_path = os.path.join(model_dir, self.model_name, str(self.epoch) + ".pt")
           self.__save_checkpoint(optimizer, checkpoint_path)
-          
+
+      training_clock.stop()
+
+      print("\n=======================================================")
+      print(f"=> training completed.")
+      print(f"{training_clock}")
+      print("=======================================================")
+
     except KeyboardInterrupt:
-      print(f"Training stopped by user at epoch {self.epoch}.")
+      training_clock.stop()
       self.epoch -= 1
 
+      print("\n=======================================================")
+      print(f"=> training stopped by user at epoch {self.epoch}.")
+      print(f"{training_clock}")
+      print("=======================================================")
 
   def __compute_b(
         self, 
@@ -566,9 +587,9 @@ class PINN(nn.Module):
   def print_current_metrics(self):
       """ Print the most recent set of metrics """
       if self.logs['total_loss']:
-          print(f"Epoch: {self.epoch}, "
-                f"Total Loss: {self.logs['total_loss'][-1]:.4f}, "
-                f"PDE Loss - Navier Stoker: {self.logs['pde_ns_loss'][-1]:.4f}, "
+          print(f"\nEpoch: {self.epoch}\n"
+                f"\tTotal Loss: {self.logs['total_loss'][-1]:.4f}\n"
+                f"\t(PDE Loss - Navier Stoker: {self.logs['pde_ns_loss'][-1]:.4f}, "
                 f"PDE Loss - Poisson: {self.logs['pde_ps_loss'][-1]:.4f}, "
                 f"BC Inlet Loss: {self.logs['bc_in_loss'][- 1]:.4f}, "
                 f"BC Outlet Loss: {self.logs['bc_out_loss'][- 1]:.4f}, "
@@ -578,7 +599,7 @@ class PINN(nn.Module):
                 f"BC Up Loss: {self.logs['bc_up_loss'][- 1]:.4f}, "
                 f"No-Slip Loss: {self.logs['no_slip_loss'][-1]:.4f}, "
                 f"Real-Data Loss: {self.logs['real_data_loss'][-1]:.4f}, " 
-                f"Impermeability Loss: {self.logs['imp_loss'][-1]:.4f}")
+                f"Impermeability Loss: {self.logs['imp_loss'][-1]:.4f})")
       else:
           print("No metrics to display.")
 
@@ -589,9 +610,9 @@ class PINN(nn.Module):
       for _epoch in range(1, self.epoch + 1): 
       
         if self.logs['total_loss']:
-            print(f"Epoch: {_epoch}, "
-                  f"Total Loss: {self.logs['total_loss'][_epoch - 1]:.4f}, "
-                  f"PDE Loss - Navier Stoker: {self.logs['pde_ns_loss'][_epoch - 1]:.4f}, "
+            print(f"\nEpoch: {_epoch}\n"
+                  f"\tTotal Loss: {self.logs['total_loss'][_epoch - 1]:.4f}\n"
+                  f"\t(PDE Loss - Navier Stoker: {self.logs['pde_ns_loss'][_epoch - 1]:.4f}, "
                   f"PDE Loss - Poisson: {self.logs['pde_ps_loss'][_epoch - 1]:.4f}, "
                   f"BC Inlet Loss: {self.logs['bc_in_loss'][_epoch - 1]:.4f}, "
                   f"BC Outlet Loss: {self.logs['bc_out_loss'][_epoch - 1]:.4f}, "
@@ -601,7 +622,7 @@ class PINN(nn.Module):
                   f"BC Up Loss: {self.logs['bc_up_loss'][_epoch - 1]:.4f}, "
                   f"No-Slip Loss: {self.logs['no_slip_loss'][_epoch - 1]:.4f}, "
                   f"Real-Data Loss: {self.logs['real_data_loss'][_epoch - 1]:.4f}, "
-                  f"Impermeability Loss: {self.logs['imp_loss'][_epoch - 1]:.4f}")
+                  f"Impermeability Loss: {self.logs['imp_loss'][_epoch - 1]:.4f})")
         else:
             print("No metrics to display.")
 

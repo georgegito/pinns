@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from scipy.stats.qmc import Sobol
+import time
 
 def stack_xyzt_tensors(x: torch.tensor, y: torch.tensor, z: torch.tensor, t: torch.tensor) -> torch.tensor:
   return torch.stack((x, y, z, t), axis=-1)
@@ -179,3 +180,24 @@ def get_device() -> torch.device:
     return torch.device("cuda")
   else:
     return torch.device("cpu")
+  
+class Clock:
+  def __init__(self):
+    self.start_time = None
+    self.end_time = None
+
+  def start(self):
+    self.start_time = time.time()
+
+  def stop(self):
+    self.end_time = time.time()
+
+  def elapsed_time(self):
+    return self.end_time - self.start_time
+
+  def reset(self):
+    self.start_time = None
+    self.end_time = None
+
+  def __str__(self):
+    return f"Elapsed time: {self.elapsed_time():.4f}s"
