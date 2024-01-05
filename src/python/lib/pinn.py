@@ -716,3 +716,37 @@ class PINN(nn.Module):
     _pinn.eval()
 
     return _pinn
+
+  @staticmethod
+  def load_from_checkpoint_for_training(checkpoint_dir: str, model_name: str, checkpoint_num: int, lr=1) -> ('PINN', torch.optim.Optimizer):
+
+    file_path = os.path.join(checkpoint_dir, model_name, str(checkpoint_num) + ".pt")
+
+    if os.path.isfile(file_path):
+      print("=> loading checkpoint '{}'".format(file_path))
+      checkpoint = torch.load(file_path)
+
+      _input_dim = checkpoint['input_dim']
+      _output_dim = checkpoint['output_dim']
+      _hidden_units = checkpoint['hidden_units']
+ 
+      _pinn = PINN(hidden_units=_hidden_units, model_name=model_name, input_dim=_input_dim, output_dim=_output_dim)
+
+      _pinn.epoch = checkpoint['epoch']
+      _pinn.logs = checkpoint['logs']
+
+      _pinn.load_state_dict(checkpoint['state_dict'])
+
+      _optimizer = torch.optim.LBFGS(_pinn.parameters(), lr=lr, line_search_fn="strong_wolfe")
+
+      _optimizer.load_state_dict(checkpoint['optimizer'])
+
+      print("=> loaded checkpoint '{}' (epoch {})"
+                .format(file_path, checkpoint['epoch']))
+    else:
+      print("=> no checkpoint found at '{}'".format(file_path))
+      return None
+
+    _pinn.eval()
+
+    return _pinn, _optimizer
