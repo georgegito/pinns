@@ -694,7 +694,7 @@ class PINN(nn.Module):
 
     if os.path.isfile(file_path):
       print("=> loading checkpoint '{}'".format(file_path))
-      checkpoint = torch.load(file_path)
+      checkpoint = torch.load(file_path, map_location=torch.device('cpu'))
 
       _input_dim = checkpoint['input_dim']
       _output_dim = checkpoint['output_dim']
