@@ -1,11 +1,4 @@
 #!/bin/bash
-#SBATCH --job-name=pinn_training
-#SBATCH --nodes=1
-#SBATCH --partition=gpu
-#SBATCH --gres=gpu:1
-#SBATCH --time=10:00
-#SBATCH --output=./out/output-%j.txt      ## use full path
-#SBATCH --error=./out/error-%j.txt        ## use full path
 
 source ~/georgito_env/bin/activate
 
