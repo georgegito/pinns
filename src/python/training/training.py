@@ -59,7 +59,7 @@ pinn = PINN(input_dim, output_dim, hidden_units, model_name).to(device)
 optimizer = torch.optim.LBFGS(pinn.parameters(), lr=1, line_search_fn="strong_wolfe")
 
 # Use this to continue training from a checkpoint
-# pinn, optimizer = PINN.load_from_checkpoint_for_training(model_dir, model_name, checkpoint_num=1500)
+# pinn, optimizer = PINN.load_from_checkpoint_for_training(model_dir, model_name, checkpoint_num=1500, device=device)
 
 epochs = config["epochs"]
 checkpoint_epochs = config["checkpoint_epochs"]

@@ -718,13 +718,13 @@ class PINN(nn.Module):
     return _pinn
 
   @staticmethod
-  def load_from_checkpoint_for_training(checkpoint_dir: str, model_name: str, checkpoint_num: int, lr=1) -> ('PINN', torch.optim.Optimizer):
+  def load_from_checkpoint_for_training(checkpoint_dir: str, model_name: str, checkpoint_num: int, device: torch.device,lr=1) -> ('PINN', torch.optim.Optimizer):
 
     file_path = os.path.join(checkpoint_dir, model_name, str(checkpoint_num) + ".pt")
 
     if os.path.isfile(file_path):
       print("=> loading checkpoint '{}'".format(file_path))
-      checkpoint = torch.load(file_path)
+      checkpoint = torch.load(file_path, map_location=torch.device(device))
 
       _input_dim = checkpoint['input_dim']
       _output_dim = checkpoint['output_dim']
