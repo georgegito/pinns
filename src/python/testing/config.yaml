@@ -1,6 +1,6 @@
 model_name: "v1"
 
-model_checkpoint_num: 5
+model_checkpoint_num: 1500
 
 x_max: 1
 y_max: 1
