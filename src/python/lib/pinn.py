@@ -4,6 +4,7 @@ import numpy as np
 import utils
 import os
 import pandas as pd
+from matplotlib import pyplot as plt
 
 class PINN(nn.Module):
 
@@ -750,3 +751,30 @@ class PINN(nn.Module):
     _pinn.eval()
 
     return _pinn, _optimizer
+
+  def plot_learning_curves(self):
+    fig, axs = plt.subplots(3, 4, figsize=(20, 15))
+    axs[0, 0].plot(self.logs['total_loss'])
+    axs[0, 0].set_title('Total loss')
+    axs[0, 1].plot(self.logs['pde_ns_loss'])
+    axs[0, 1].set_title('PDE loss - Navier Stokes')
+    axs[0, 2].plot(self.logs['pde_ps_loss'])
+    axs[0, 2].set_title('PDE loss - Poisson')
+    axs[0, 3].plot(self.logs['bc_in_loss'])
+    axs[0, 3].set_title('BC loss - Inlet')
+    axs[1, 0].plot(self.logs['bc_out_loss'])
+    axs[1, 0].set_title('BC loss - Outlet')
+    axs[1, 1].plot(self.logs['bc_left_loss'])
+    axs[1, 1].set_title('BC loss - Left')
+    axs[1, 2].plot(self.logs['bc_right_loss'])
+    axs[1, 2].set_title('BC loss - Right')
+    axs[1, 3].plot(self.logs['bc_down_loss'])
+    axs[1, 3].set_title('BC loss - Down')
+    axs[2, 0].plot(self.logs['bc_up_loss'])
+    axs[2, 0].set_title('BC loss - Up')
+    axs[2, 1].plot(self.logs['no_slip_loss'])
+    axs[2, 1].set_title('No-slip loss')
+    axs[2, 2].plot(self.logs['real_data_loss'])
+    axs[2, 2].set_title('Real-data loss')
+    axs[2, 3].plot(self.logs['imp_loss'])
+    axs[2, 3].set_title('Impermeability loss')
