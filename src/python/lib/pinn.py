@@ -75,7 +75,7 @@ class PINN(nn.Module):
       input_b_down: torch.Tensor,
       input_b_up: torch.Tensor,
       input_s: torch.Tensor,
-      input_u_points: torch.Tensor,
+      input_u: torch.Tensor,
       output_u_exp: torch.Tensor,
       in_velocity: torch.Tensor,
       mu: float, rho: float, 
