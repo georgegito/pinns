@@ -232,32 +232,68 @@ class ReLoBRaLo:
     return lambda_i_bal
 
 
-  def __compute_lambda_i_hist(self, L: np.array, i: int, t_index: int):
+  # def __compute_lambda_i_hist(self, L: np.array, i: int, t_index: int):
 
+  #   if t_index < 0: return 0
+
+  #   lambda_i_hist = self.rho * self.__compute_lambda_i(L, i, t_index-1) + (1 - self.rho) * self.__compute_lambda_i_bal(L, i, t_index, 0)
+
+  #   return lambda_i_hist
+
+
+  # def __compute_lambda_i(self, L: np.array, i: int, t_index: int):
+
+  #   if t_index < 0: return 0
+
+  #   lambda_i = self.alpha * self.__compute_lambda_i_hist(L, i, t_index) + (1 - self.alpha) * self.__compute_lambda_i_bal(L, i, t_index, t_index-1)
+
+  #   return lambda_i
+
+
+  # def compute_next_lambdas(self, L: np.array):
+  #   # L: m * n -> m: number of losses, n: number of iterations
+  #   m = len(L)
+  #   n = len(L[0])
+
+  #   next_lambdas = []
+
+  #   for i in range(m):
+  #     next_lambdas.append(self.__compute_lambda_i(L, i, n-1))
+
+  #   return next_lambdas
+
+
+  def __compute_lambda_i_hist(self, L, i, t_index, lambda_i_history):
     if t_index < 0: return 0
 
-    lambda_i_hist = self.rho * self.__compute_lambda_i(L, i, t_index-1) + (1 - self.rho) * self.__compute_lambda_i_bal(L, i, t_index, 0)
+    prev_lambda_i = lambda_i_history[i][t_index-1] if t_index > 0 else 0
+    lambda_i_hist = self.rho * prev_lambda_i + (1 - self.rho) * self.__compute_lambda_i_bal(L, i, t_index, 0)
 
     return lambda_i_hist
 
 
-  def __compute_lambda_i(self, L: np.array, i: int, t_index: int):
+  def __compute_lambda_i(self, L, i, t_index, lambda_i_history):
+      if t_index < 0: return 0
 
-    if t_index < 0: return 0
+      lambda_i_hist = self.__compute_lambda_i_hist(L, i, t_index, lambda_i_history)
+      lambda_i_bal = self.__compute_lambda_i_bal(L, i, t_index, t_index-1)
+      lambda_i = self.alpha * lambda_i_hist + (1 - self.alpha) * lambda_i_bal
 
-    lambda_i = self.alpha * self.__compute_lambda_i_hist(L, i, t_index) + (1 - self.alpha) * self.__compute_lambda_i_bal(L, i, t_index, t_index-1)
-
-    return lambda_i
+      return lambda_i
 
 
-  def compute_next_lambdas(self, L: np.array):
-    # L: m * n -> m: number of losses, n: number of iterations
-    m = len(L)
-    n = len(L[0])
+  def compute_next_lambdas(self, L):
+      m = len(L)
+      n = len(L[0])
 
-    next_lambdas = []
+      lambda_i_history = [[0 for _ in range(n)] for _ in range(m)]
+      next_lambdas = []
 
-    for i in range(m):
-      next_lambdas.append(self.__compute_lambda_i(L, i, n-1))
+      for t in range(n):
+          for i in range(m):
+              lambda_i_history[i][t] = self.__compute_lambda_i(L, i, t, lambda_i_history)
 
-    return next_lambdas
+      for i in range(m):
+          next_lambdas.append(lambda_i_history[i][n-1])
+
+      return next_lambdas
