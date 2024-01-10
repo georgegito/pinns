@@ -800,77 +800,75 @@ class PINN(nn.Module):
 
   def plot_learning_curves(self):
     fig, axs = plt.subplots(3, 4, figsize=(20, 15))
-    axs[0, 0].plot(self.logs['total_loss'], linewidth=0.5)
-    axs[0, 0].set_title('Total loss')
 
-    axs[0, 1].plot(self.logs['pde_ns_loss'], linewidth=0.5)
-    axs[0, 1].set_title('PDE loss - Navier Stokes')
+    linewidth = 0.5
 
-    axs[0, 2].plot(self.logs['pde_ps_loss'], linewidth=0.5)
-    axs[0, 2].set_title('PDE loss - Poisson')
+    axs[0, 0].plot(self.logs['pde_ns_loss'], linewidth=linewidth)
+    axs[0, 0].set_title('PDE loss - Navier Stokes')
 
-    axs[0, 3].plot(self.logs['bc_in_loss'], linewidth=0.5)
-    axs[0, 3].set_title('BC loss - Inlet')
+    axs[0, 1].plot(self.logs['pde_ps_loss'], linewidth=linewidth)
+    axs[0, 1].set_title('PDE loss - Poisson')
 
-    axs[1, 0].plot(self.logs['bc_out_loss'], linewidth=0.5)
-    axs[1, 0].set_title('BC loss - Outlet')
+    axs[0, 2].plot(self.logs['bc_in_loss'], linewidth=linewidth)
+    axs[0, 2].set_title('BC loss - Inlet')
 
-    axs[1, 1].plot(self.logs['bc_left_loss'], linewidth=0.5)
-    axs[1, 1].set_title('BC loss - Left')
+    axs[0, 3].plot(self.logs['bc_out_loss'], linewidth=linewidth)
+    axs[0, 3].set_title('BC loss - Outlet')
 
-    axs[1, 2].plot(self.logs['bc_right_loss'], linewidth=0.5)
-    axs[1, 2].set_title('BC loss - Right')
+    axs[1, 0].plot(self.logs['bc_left_loss'], linewidth=linewidth)
+    axs[1, 0].set_title('BC loss - Left')
 
-    axs[1, 3].plot(self.logs['bc_down_loss'], linewidth=0.5)
-    axs[1, 3].set_title('BC loss - Down')
+    axs[1, 1].plot(self.logs['bc_right_loss'], linewidth=linewidth)
+    axs[1, 1].set_title('BC loss - Right')
 
-    axs[2, 0].plot(self.logs['bc_up_loss'], linewidth=0.5)
-    axs[2, 0].set_title('BC loss - Up')
+    axs[1, 2].plot(self.logs['bc_down_loss'], linewidth=linewidth)
+    axs[1, 2].set_title('BC loss - Down')
 
-    axs[2, 1].plot(self.logs['surface_loss'], linewidth=0.5)
-    axs[2, 1].set_title('Surface loss')
+    axs[1, 3].plot(self.logs['bc_up_loss'], linewidth=linewidth)
+    axs[1, 3].set_title('BC loss - Up')
 
-    axs[2, 2].plot(self.logs['real_data_loss'], linewidth=0.5)
-    axs[2, 2].set_title('Real-data loss')
+    axs[2, 0].plot(self.logs['surface_loss'], linewidth=linewidth)
+    axs[2, 0].set_title('Surface loss')
 
-    for i in range(1, 11):
-      axs[2, 3].plot(self.logs[list(self.logs.keys())[i]], linewidth=0.5)
-    axs[2, 3].set_title('All losses')
+    axs[2, 1].plot(self.logs['real_data_loss'], linewidth=linewidth)
+    axs[2, 1].set_title('Real-data loss')
 
 
   def plot_lambdas(self):
     fig, axs = plt.subplots(3, 4, figsize=(20, 15))
 
-    axs[0, 0].plot(self.lambdas['pde_ns'], linewidth=0.5)
+    linewidth = 0.5
+
+    axs[0, 0].plot(self.lambdas['pde_ns'], linewidth=linewidth)
     axs[0, 0].set_title('lambda PDE - Navier Stokes')
 
-    axs[0, 1].plot(self.lambdas['pde_ps'], linewidth=0.5)
+    axs[0, 1].plot(self.lambdas['pde_ps'], linewidth=linewidth)
     axs[0, 1].set_title('lambda PDE - Poisson')
 
-    axs[0, 2].plot(self.lambdas['bc_in'], linewidth=0.5)
+    axs[0, 2].plot(self.lambdas['bc_in'], linewidth=linewidth)
     axs[0, 2].set_title('lambda BC - Inlet')
 
-    axs[0, 3].plot(self.lambdas['bc_out'], linewidth=0.5)
+    axs[0, 3].plot(self.lambdas['bc_out'], linewidth=linewidth)
     axs[0, 3].set_title('lambda BC - Outlet')
 
-    axs[1, 0].plot(self.lambdas['bc_left'], linewidth=0.5)
+    axs[1, 0].plot(self.lambdas['bc_left'], linewidth=linewidth)
     axs[1, 0].set_title('lambda BC - Left')
 
-    axs[1, 1].plot(self.lambdas['bc_right'], linewidth=0.5)
+    axs[1, 1].plot(self.lambdas['bc_right'], linewidth=linewidth)
     axs[1, 1].set_title('lambda BC - Right')
 
-    axs[1, 2].plot(self.lambdas['bc_down'], linewidth=0.5)
+    axs[1, 2].plot(self.lambdas['bc_down'], linewidth=linewidth)
     axs[1, 2].set_title('lambda BC - Down')
 
-    axs[1, 3].plot(self.lambdas['bc_up'], linewidth=0.5)
+    axs[1, 3].plot(self.lambdas['bc_up'], linewidth=linewidth)
     axs[1, 3].set_title('lambda BC - Up')
 
-    axs[2, 0].plot(self.lambdas['surface'], linewidth=0.5)
+    axs[2, 0].plot(self.lambdas['surface'], linewidth=linewidth)
     axs[2, 0].set_title('lambda Surface')
 
-    axs[2, 1].plot(self.lambdas['real_data'], linewidth=0.5)
+    axs[2, 1].plot(self.lambdas['real_data'], linewidth=linewidth)
     axs[2, 1].set_title('lambda Real-data')
 
     for i in range(1, 10):
-      axs[2, 2].plot(self.lambdas[list(self.lambdas.keys())[i]], linewidth=0.5)
+      axs[2, 2].plot(self.lambdas[list(self.lambdas.keys())[i]], linewidth=linewidth)
     axs[2, 2].set_title('All lambdas')
