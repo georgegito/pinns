@@ -35,7 +35,7 @@ class PINN(nn.Module):
                  "bc_down_loss": [], "bc_up_loss": [], 
                  "surface_loss": [], "real_data_loss": []}
 
-    self.lamdas = {"pde_ns": [], "pde_ps": [], 
+    self.lambdas = {"pde_ns": [], "pde_ps": [], 
                    "bc_in": [], "bc_out": [], 
                    "bc_left": [], "bc_right": [],
                    "bc_down": [], "bc_up": [], 
@@ -59,16 +59,16 @@ class PINN(nn.Module):
     self.hidden_units = hidden_units
     self.model_name = model_name
 
-    self.lamda_pde_ns = 1
-    self.lamda_pde_ps = 1
-    self.lamda_bc_in = 1
-    self.lamda_bc_out = 1
-    self.lamda_bc_left = 1
-    self.lamda_bc_right = 1
-    self.lamda_bc_down = 1
-    self.lamda_bc_up = 1
-    self.lamda_surface = 1
-    self.lamda_real_data = 1
+    self.lambda_pde_ns = .1
+    self.lambda_pde_ps = .1
+    self.lambda_bc_in = .1
+    self.lambda_bc_out = .1
+    self.lambda_bc_left = .1
+    self.lambda_bc_right = .1
+    self.lambda_bc_down = .1
+    self.lambda_bc_up = .1
+    self.lambda_surface = .1
+    self.lambda_real_data = .1
 
 
   def forward(self, input: torch.Tensor) -> torch.Tensor:
@@ -256,16 +256,16 @@ class PINN(nn.Module):
     real_data_loss = torch.tensor(0)
 
     # total loss
-    total_loss =  self.lamda_pde_ns    * pde_ns_loss + \
-                  self.lamda_pde_ps    * pde_ps_loss + \
-                  self.lamda_bc_in     * bc_in_loss + \
-                  self.lamda_bc_out    * bc_out_loss + \
-                  self.lamda_bc_left   * bc_left_loss + \
-                  self.lamda_bc_right  * bc_right_loss + \
-                  self.lamda_bc_down   * bc_down_loss + \
-                  self.lamda_bc_up     * bc_up_loss + \
-                  self.lamda_surface   * surface_loss + \
-                  self.lamda_real_data * real_data_loss
+    total_loss =  self.lambda_pde_ns    * pde_ns_loss + \
+                  self.lambda_pde_ps    * pde_ps_loss + \
+                  self.lambda_bc_in     * bc_in_loss + \
+                  self.lambda_bc_out    * bc_out_loss + \
+                  self.lambda_bc_left   * bc_left_loss + \
+                  self.lambda_bc_right  * bc_right_loss + \
+                  self.lambda_bc_down   * bc_down_loss + \
+                  self.lambda_bc_up     * bc_up_loss + \
+                  self.lambda_surface   * surface_loss + \
+                  self.lambda_real_data * real_data_loss
 
     return total_loss, pde_ns_loss, pde_ps_loss, \
            bc_in_loss, bc_out_loss, \
@@ -379,6 +379,8 @@ class PINN(nn.Module):
     training_clock = utils.Clock()
     training_clock.start()
 
+    relobralo = utils.ReLoBRaLo()
+
     try:
       while self.epoch < epochs:
 
@@ -407,13 +409,13 @@ class PINN(nn.Module):
 
         self.print_current_metrics() 
 
-        self.__update_lamdas()
+        self.__update_lambdas(relobralo)
 
-        self.__log_lamdas(self.lamda_pde_ns, self.lamda_pde_ps, 
-                          self.lamda_bc_in, self.lamda_bc_out, 
-                          self.lamda_bc_left, self.lamda_bc_right, 
-                          self.lamda_bc_down, self.lamda_bc_up, 
-                          self.lamda_surface, self.lamda_real_data)
+        self.__log_lambdas(self.lambda_pde_ns, self.lambda_pde_ps, 
+                          self.lambda_bc_in, self.lambda_bc_out, 
+                          self.lambda_bc_left, self.lambda_bc_right, 
+                          self.lambda_bc_down, self.lambda_bc_up, 
+                          self.lambda_surface, self.lambda_real_data)
 
         epoch_clock.stop()
         print(f"\t{epoch_clock}")
@@ -562,29 +564,26 @@ class PINN(nn.Module):
     return (x_f, y_f, z_f, xyz_b_in, xyz_b_out, xyz_b_left, xyz_b_right, xyz_b_down, xyz_b_up, xyz_s, xyz_u, uyw_u)
 
 
-  def __update_lamdas(self, epsilon=0.0001):
-    """ Update loss lamdas """
-    rate_pde_ns = self.logs['pde_ns_loss'][-1] / (self.logs['pde_ns_loss'][0] + epsilon)
-    rate_pde_ps = self.logs['pde_ps_loss'][-1] / (self.logs['pde_ps_loss'][0] + epsilon)
-    rate_bc_in = self.logs['bc_in_loss'][-1] / (self.logs['bc_in_loss'][0] + epsilon)
-    rate_bc_out = self.logs['bc_out_loss'][-1] / (self.logs['bc_out_loss'][0] + epsilon)
-    rate_bc_left = self.logs['bc_left_loss'][-1] / (self.logs['bc_left_loss'][0] + epsilon)
-    rate_bc_right = self.logs['bc_right_loss'][-1] / (self.logs['bc_right_loss'][0] + epsilon)
-    rate_bc_down = self.logs['bc_down_loss'][-1] / (self.logs['bc_down_loss'][0] + epsilon)
-    rate_bc_up = self.logs['bc_up_loss'][-1] / (self.logs['bc_up_loss'][0] + epsilon)
-    rate_surface = self.logs['surface_loss'][-1] / (self.logs['surface_loss'][0] + epsilon)
-    rate_real_data = self.logs['real_data_loss'][-1] / (self.logs['real_data_loss'][0] + epsilon)
+  def __update_lambdas(self, relobralo: utils.ReLoBRaLo):
+    """ Update loss lambdas """
+    losses = [self.logs["pde_ns_loss"], self.logs["pde_ps_loss"], 
+              self.logs["bc_in_loss"], self.logs["bc_out_loss"], 
+              self.logs["bc_left_loss"], self.logs["bc_right_loss"], 
+              self.logs["bc_down_loss"], self.logs["bc_up_loss"], 
+              self.logs["surface_loss"], self.logs["real_data_loss"]]
 
-    self.lamda_pde_ns = rate_pde_ns
-    self.lamda_pde_ps = rate_pde_ps
-    self.lamda_bc_in = rate_bc_in
-    self.lamda_bc_out = rate_bc_out
-    self.lamda_bc_left = rate_bc_left
-    self.lamda_bc_right = rate_bc_right
-    self.lamda_bc_down = rate_bc_down
-    self.lamda_bc_up = rate_bc_up
-    self.lamda_surface = rate_surface
-    self.lamda_real_data = rate_real_data
+    lambdas = relobralo.compute_next_lambdas(L=losses)
+
+    self.lambda_pde_ns    = lambdas[0]
+    self.lambda_pde_ps    = lambdas[1]
+    self.lambda_bc_in     = lambdas[2]
+    self.lambda_bc_out    = lambdas[3]
+    self.lambda_bc_left   = lambdas[4]
+    self.lambda_bc_right  = lambdas[5]
+    self.lambda_bc_down   = lambdas[6]
+    self.lambda_bc_up     = lambdas[7]
+    self.lambda_surface   = lambdas[8]
+    self.lambda_real_data = lambdas[9]
 
 
   def __log_metrics(self, total_loss: float, 
@@ -607,22 +606,22 @@ class PINN(nn.Module):
     self.logs['real_data_loss'].append(real_data_loss)
 
 
-  def __log_lamdas(self, lamda_pde_ns: float, lamda_pde_ps: float, 
-                    lamda_bc_in: float, lamda_bc_out: float, 
-                    lamda_bc_left: float, lamda_bc_right: float, 
-                    lamda_bc_down: float, lamda_bc_up: float, 
-                    lamda_surface: float, lamda_real_data: float):
-      """ Log loss lamdas """
-      self.lamdas['pde_ns'].append(lamda_pde_ns)
-      self.lamdas['pde_ps'].append(lamda_pde_ps)
-      self.lamdas['bc_in'].append(lamda_bc_in)
-      self.lamdas['bc_out'].append(lamda_bc_out)
-      self.lamdas['bc_left'].append(lamda_bc_left)
-      self.lamdas['bc_right'].append(lamda_bc_right)
-      self.lamdas['bc_down'].append(lamda_bc_down)
-      self.lamdas['bc_up'].append(lamda_bc_up)
-      self.lamdas['surface'].append(lamda_surface)
-      self.lamdas['real_data'].append(lamda_real_data)
+  def __log_lambdas(self, lambda_pde_ns: float, lambda_pde_ps: float, 
+                    lambda_bc_in: float, lambda_bc_out: float, 
+                    lambda_bc_left: float, lambda_bc_right: float, 
+                    lambda_bc_down: float, lambda_bc_up: float, 
+                    lambda_surface: float, lambda_real_data: float):
+      """ Log loss lambdas """
+      self.lambdas['pde_ns'].append(lambda_pde_ns)
+      self.lambdas['pde_ps'].append(lambda_pde_ps)
+      self.lambdas['bc_in'].append(lambda_bc_in)
+      self.lambdas['bc_out'].append(lambda_bc_out)
+      self.lambdas['bc_left'].append(lambda_bc_left)
+      self.lambdas['bc_right'].append(lambda_bc_right)
+      self.lambdas['bc_down'].append(lambda_bc_down)
+      self.lambdas['bc_up'].append(lambda_bc_up)
+      self.lambdas['surface'].append(lambda_surface)
+      self.lambdas['real_data'].append(lambda_real_data)
 
 
   def __get_logs(self):
@@ -675,7 +674,7 @@ class PINN(nn.Module):
 
     print("=> saving checkpoint '{}'".format(file_path))
     state = {'name': self.model_name, 'input_dim': self.input_dim, 'output_dim': self.output_dim, 'hidden_units': self.hidden_units, 'epoch': self.epoch, 'state_dict': self.state_dict(),
-              'optimizer': optimizer.state_dict(), "logs": self.logs, "lamdas": self.lamdas}
+              'optimizer': optimizer.state_dict(), "logs": self.logs, "lambdas": self.lambdas}
     torch.save(state, file_path)
 
 
@@ -693,7 +692,7 @@ class PINN(nn.Module):
           self.model_name = checkpoint['name']
           self.epoch = checkpoint['epoch']
           self.logs = checkpoint['logs']
-          self.lamdas = checkpoint['lamdas']
+          self.lambdas = checkpoint['lambdas']
           
           if mode == 'training':
             optimizer.load_state_dict(checkpoint['optimizer'])
@@ -749,7 +748,7 @@ class PINN(nn.Module):
 
       _pinn.epoch = checkpoint['epoch']
       _pinn.logs = checkpoint['logs']
-      _pinn.lamdas = checkpoint['lamdas']
+      _pinn.lambdas = checkpoint['lambdas']
 
       _pinn.load_state_dict(checkpoint['state_dict'])
 
@@ -780,7 +779,7 @@ class PINN(nn.Module):
 
       _pinn.epoch = checkpoint['epoch']
       _pinn.logs = checkpoint['logs']
-      _pinn.lamdas = checkpoint['lamdas']
+      _pinn.lambdas = checkpoint['lambdas']
 
       _pinn.load_state_dict(checkpoint['state_dict'])
 
@@ -801,57 +800,77 @@ class PINN(nn.Module):
 
   def plot_learning_curves(self):
     fig, axs = plt.subplots(3, 4, figsize=(20, 15))
-    axs[0, 0].plot(self.logs['total_loss'])
+    axs[0, 0].plot(self.logs['total_loss'], linewidth=0.5)
     axs[0, 0].set_title('Total loss')
-    axs[0, 1].plot(self.logs['pde_ns_loss'])
+
+    axs[0, 1].plot(self.logs['pde_ns_loss'], linewidth=0.5)
     axs[0, 1].set_title('PDE loss - Navier Stokes')
-    axs[0, 2].plot(self.logs['pde_ps_loss'])
+
+    axs[0, 2].plot(self.logs['pde_ps_loss'], linewidth=0.5)
     axs[0, 2].set_title('PDE loss - Poisson')
-    axs[0, 3].plot(self.logs['bc_in_loss'])
+
+    axs[0, 3].plot(self.logs['bc_in_loss'], linewidth=0.5)
     axs[0, 3].set_title('BC loss - Inlet')
-    axs[1, 0].plot(self.logs['bc_out_loss'])
+
+    axs[1, 0].plot(self.logs['bc_out_loss'], linewidth=0.5)
     axs[1, 0].set_title('BC loss - Outlet')
-    axs[1, 1].plot(self.logs['bc_left_loss'])
+
+    axs[1, 1].plot(self.logs['bc_left_loss'], linewidth=0.5)
     axs[1, 1].set_title('BC loss - Left')
-    axs[1, 2].plot(self.logs['bc_right_loss'])
+
+    axs[1, 2].plot(self.logs['bc_right_loss'], linewidth=0.5)
     axs[1, 2].set_title('BC loss - Right')
-    axs[1, 3].plot(self.logs['bc_down_loss'])
+
+    axs[1, 3].plot(self.logs['bc_down_loss'], linewidth=0.5)
     axs[1, 3].set_title('BC loss - Down')
-    axs[2, 0].plot(self.logs['bc_up_loss'])
+
+    axs[2, 0].plot(self.logs['bc_up_loss'], linewidth=0.5)
     axs[2, 0].set_title('BC loss - Up')
-    axs[2, 1].plot(self.logs['surface_loss'])
+
+    axs[2, 1].plot(self.logs['surface_loss'], linewidth=0.5)
     axs[2, 1].set_title('Surface loss')
-    axs[2, 2].plot(self.logs['real_data_loss'])
+
+    axs[2, 2].plot(self.logs['real_data_loss'], linewidth=0.5)
     axs[2, 2].set_title('Real-data loss')
 
     for i in range(1, 11):
-      axs[2, 3].plot(self.logs[list(self.logs.keys())[i]])
+      axs[2, 3].plot(self.logs[list(self.logs.keys())[i]], linewidth=0.5)
     axs[2, 3].set_title('All losses')
 
 
-  def plot_lamdas(self):
+  def plot_lambdas(self):
     fig, axs = plt.subplots(3, 4, figsize=(20, 15))
-    axs[0, 0].plot(self.lamdas['pde_ns'])
-    axs[0, 0].set_title('Lamda PDE - Navier Stokes')
-    axs[0, 1].plot(self.lamdas['pde_ps'])
-    axs[0, 1].set_title('Lamda PDE - Poisson')
-    axs[0, 2].plot(self.lamdas['bc_in'])
-    axs[0, 2].set_title('Lamda BC - Inlet')
-    axs[0, 3].plot(self.lamdas['bc_out'])
-    axs[0, 3].set_title('Lamda BC - Outlet')
-    axs[1, 0].plot(self.lamdas['bc_left'])
-    axs[1, 0].set_title('Lamda BC - Left')
-    axs[1, 1].plot(self.lamdas['bc_right'])
-    axs[1, 1].set_title('Lamda BC - Right')
-    axs[1, 2].plot(self.lamdas['bc_down'])
-    axs[1, 2].set_title('Lamda BC - Down')
-    axs[1, 3].plot(self.lamdas['bc_up'])
-    axs[1, 3].set_title('Lamda BC - Up')
-    axs[2, 0].plot(self.lamdas['surface'])
-    axs[2, 0].set_title('Lamda Surface')
-    axs[2, 1].plot(self.lamdas['real_data'])
-    axs[2, 1].set_title('Lamda Real-data')
+
+    axs[0, 0].plot(self.lambdas['pde_ns'], linewidth=0.5)
+    axs[0, 0].set_title('lambda PDE - Navier Stokes')
+
+    axs[0, 1].plot(self.lambdas['pde_ps'], linewidth=0.5)
+    axs[0, 1].set_title('lambda PDE - Poisson')
+
+    axs[0, 2].plot(self.lambdas['bc_in'], linewidth=0.5)
+    axs[0, 2].set_title('lambda BC - Inlet')
+
+    axs[0, 3].plot(self.lambdas['bc_out'], linewidth=0.5)
+    axs[0, 3].set_title('lambda BC - Outlet')
+
+    axs[1, 0].plot(self.lambdas['bc_left'], linewidth=0.5)
+    axs[1, 0].set_title('lambda BC - Left')
+
+    axs[1, 1].plot(self.lambdas['bc_right'], linewidth=0.5)
+    axs[1, 1].set_title('lambda BC - Right')
+
+    axs[1, 2].plot(self.lambdas['bc_down'], linewidth=0.5)
+    axs[1, 2].set_title('lambda BC - Down')
+
+    axs[1, 3].plot(self.lambdas['bc_up'], linewidth=0.5)
+    axs[1, 3].set_title('lambda BC - Up')
+
+    axs[2, 0].plot(self.lambdas['surface'], linewidth=0.5)
+    axs[2, 0].set_title('lambda Surface')
+
+    axs[2, 1].plot(self.lambdas['real_data'], linewidth=0.5)
+    axs[2, 1].set_title('lambda Real-data')
 
     for i in range(1, 10):
-      axs[2, 2].plot(self.lamdas[list(self.lamdas.keys())[i]])
-    axs[2, 2].set_title('All lamdas')
+      axs[2, 2].plot(self.lambdas[list(self.lambdas.keys())[i]], linewidth=0.5)
+    axs[2, 2].set_title('All lambdas')

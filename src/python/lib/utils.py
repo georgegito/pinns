@@ -2,6 +2,8 @@ import numpy as np
 import torch
 from scipy.stats.qmc import Sobol
 import time
+import math
+
 
 def stack_xyzt_tensors(x: torch.tensor, y: torch.tensor, z: torch.tensor, t: torch.tensor) -> torch.tensor:
   return torch.stack((x, y, z, t), axis=-1)
@@ -180,7 +182,8 @@ def get_device() -> torch.device:
     return torch.device("cuda")
   else:
     return torch.device("cpu")
-  
+
+
 class Clock:
   def __init__(self):
     self.start_time = None
@@ -201,3 +204,60 @@ class Clock:
 
   def __str__(self):
     return f"Elapsed time: {self.elapsed_time():.4f}s"
+
+
+class ReLoBRaLo:
+  def __init__(self, alpha:float=0.999, temperature:float=1., rho:float=0.9999, epsilon:float=1e-8):
+    self.alpha = alpha
+    self.temperature = temperature
+    self.rho = rho
+    self.epsilon = epsilon
+
+
+  def __compute_lambda_i_bal(self, L: np.array, i: int, t1_index: int, t2_index: int):
+    # L: m * n -> m: number of losses, n: number of iterations
+    # i: index of the loss function
+    # t1_index: index of the first iteration
+    # t2_index: index of the second iteration
+
+    if t1_index < 0 or t2_index < 0: return 0
+
+    m = len(L)
+    lambda_i_bal = L[i][t1_index] / (self.temperature * L[i][t2_index] + self.epsilon)
+    lambda_i_bal = np.exp(lambda_i_bal)
+    _sum = np.sum([np.exp(L[j][t1_index] / (self.temperature * L[j][t2_index] + self.epsilon)) for j in range(m)])
+    lambda_i_bal /= _sum
+    lambda_i_bal *= m
+
+    return lambda_i_bal
+
+
+  def __compute_lambda_i_hist(self, L: np.array, i: int, t_index: int):
+
+    if t_index < 0: return 0
+
+    lambda_i_hist = self.rho * self.__compute_lambda_i(L, i, t_index-1) + (1 - self.rho) * self.__compute_lambda_i_bal(L, i, t_index, 0)
+
+    return lambda_i_hist
+
+
+  def __compute_lambda_i(self, L: np.array, i: int, t_index: int):
+
+    if t_index < 0: return 0
+
+    lambda_i = self.alpha * self.__compute_lambda_i_hist(L, i, t_index) + (1 - self.alpha) * self.__compute_lambda_i_bal(L, i, t_index, t_index-1)
+
+    return lambda_i
+
+
+  def compute_next_lambdas(self, L: np.array):
+    # L: m * n -> m: number of losses, n: number of iterations
+    m = len(L)
+    n = len(L[0])
+
+    next_lambdas = []
+
+    for i in range(m):
+      next_lambdas.append(self.__compute_lambda_i(L, i, n-1))
+
+    return next_lambdas
