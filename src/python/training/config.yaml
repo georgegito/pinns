@@ -6,7 +6,7 @@ epochs: 10
 
 checkpoint_epochs: 5
 
-in_velocity: 10
+in_velocity: 1
 
 rho: 1
 mu: 1
