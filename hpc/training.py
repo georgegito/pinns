@@ -19,7 +19,8 @@ measurements_filename = "measurements.csv"
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--model_name', type=str, required=True)
-parser.add_argument('--hidden_units', nargs=3, type=int, required=True)
+parser.add_argument('--num_hidden_layers', type=int, required=True)
+parser.add_argument('--hidden_layer_size', type=int, required=True)
 parser.add_argument('--epochs', type=int, required=True)
 parser.add_argument('--checkpoint_epochs', type=int, required=True)
 parser.add_argument('--in_velocity', type=float, required=True)
@@ -41,7 +42,8 @@ in_velocity = args.in_velocity
 x_max = args.x_max
 y_max = args.y_max
 z_max = args.z_max
-hidden_units = args.hidden_units
+num_hidden_layers = args.num_hidden_layers
+hidden_layer_size = args.hidden_layer_size
 model_name = args.model_name
 epochs = args.epochs
 checkpoint_epochs = args.checkpoint_epochs
@@ -64,8 +66,9 @@ measurements_df = pd.read_csv(os.path.join(data_dir, measurements_filename))
 
 input_dim = 3
 output_dim = 4
+hidden_layers = [hidden_layer_size for _ in range(num_hidden_layers)]
 
-pinn = PINN(input_dim, output_dim, hidden_units, model_name).to(device)
+pinn = PINN(input_dim, output_dim, hidden_layers, model_name).to(device)
 
 optimizer = torch.optim.LBFGS(pinn.parameters(), lr=1, line_search_fn="strong_wolfe")
 
