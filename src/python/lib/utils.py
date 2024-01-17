@@ -264,16 +264,19 @@ class ReLoBRaLo:
 
 
   def __compute_lambda_i_hist(self, L, i, t_index, lambda_i_history):
-    if t_index < 0: return 0
+    if t_index < 0: exit()
 
-    prev_lambda_i = lambda_i_history[i][t_index-1] if t_index > 0 else 0
+    if t_index == 0:
+      return 1
+
+    prev_lambda_i = lambda_i_history[i][t_index-1]
     lambda_i_hist = self.rho * prev_lambda_i + (1 - self.rho) * self.__compute_lambda_i_bal(L, i, t_index, 0)
 
     return lambda_i_hist
 
 
   def __compute_lambda_i(self, L, i, t_index, lambda_i_history):
-      if t_index < 0: return 0
+      if t_index < 0: exit()
 
       lambda_i_hist = self.__compute_lambda_i_hist(L, i, t_index, lambda_i_history)
       lambda_i_bal = self.__compute_lambda_i_bal(L, i, t_index, t_index-1)
