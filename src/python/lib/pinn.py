@@ -18,13 +18,13 @@ class PINN(nn.Module):
 
     for units in hidden_units:
       layer = nn.Linear(in_units, units)
-      nn.init.xavier_normal_(layer.weight)  # Apply Xavier initialization
+      # nn.init.xavier_normal_(layer.weight)  # Apply Xavier initialization
       self.layers.append(layer)
       in_units = units
 
     output_layer = nn.Linear(in_units, output_dim)
 
-    nn.init.xavier_normal_(output_layer.weight)  # Apply Xavier initialization
+    # nn.init.xavier_normal_(output_layer.weight)  # Apply Xavier initialization
 
     self.layers.append(output_layer)
 
@@ -154,10 +154,10 @@ class PINN(nn.Module):
     ### Poisson equation
     f5 = p_xx + p_yy + p_zz - b
 
-    pde_ns_loss = (1/4) * torch.mean(torch.square(f1)) + \
-                          torch.mean(torch.square(f2)) + \
-                          torch.mean(torch.square(f3)) + \
-                          torch.mean(torch.square(f4))
+    pde_ns_loss = torch.mean(torch.square(f1)) + \
+                  torch.mean(torch.square(f2)) + \
+                  torch.mean(torch.square(f3)) + \
+                  torch.mean(torch.square(f4))
     
     pde_ps_loss = torch.mean(torch.square(f5))
     
@@ -171,7 +171,7 @@ class PINN(nn.Module):
     bc_in_loss_u = torch.mean(torch.square(u_b_in_pred))
     bc_in_loss_v = torch.mean(torch.square(v_b_in_pred - v_b_in_true))
     bc_in_loss_w = torch.mean(torch.square(w_b_in_pred))
-    bc_in_loss = (1/3) * (bc_in_loss_u + bc_in_loss_v + bc_in_loss_w)
+    bc_in_loss = bc_in_loss_u + bc_in_loss_v + bc_in_loss_w
 
     ## Outlet: p = 1 for y = 0
     output_b_out = self(input_b_out)
@@ -207,14 +207,20 @@ class PINN(nn.Module):
     bc_right_loss = bc_right_loss_u
 
     ## Down (No-slip wall): u = 0, v = 0, w = 0 for z = 0
+    # output_b_down = self(input_b_down)
+    # u_b_down_pred = output_b_down[:, 0]
+    # v_b_down_pred = output_b_down[:, 1]
+    # w_b_down_pred = output_b_down[:, 2]
+    # bc_down_loss_u = torch.mean(torch.square(u_b_down_pred))
+    # bc_down_loss_v = torch.mean(torch.square(v_b_down_pred))
+    # bc_down_loss_w = torch.mean(torch.square(w_b_down_pred))
+    # bc_down_loss = bc_down_loss_u + bc_down_loss_v + bc_down_loss_w
+
+    ## Down (Slip): w = 0 for z = 0
     output_b_down = self(input_b_down)
-    u_b_down_pred = output_b_down[:, 0]
-    v_b_down_pred = output_b_down[:, 1]
     w_b_down_pred = output_b_down[:, 2]
-    bc_down_loss_u = torch.mean(torch.square(u_b_down_pred))
-    bc_down_loss_v = torch.mean(torch.square(v_b_down_pred))
     bc_down_loss_w = torch.mean(torch.square(w_b_down_pred))
-    bc_down_loss = (1/3) * (bc_down_loss_u + bc_down_loss_v + bc_down_loss_w)
+    bc_down_loss = bc_down_loss_w
 
     # ## Up (Far-field Conditions): p = 1 for z = z_max
     # output_b_up = self(input_b_up)
@@ -239,21 +245,21 @@ class PINN(nn.Module):
     surface_loss_u = torch.mean(torch.square(u_s_pred))
     surface_loss_v = torch.mean(torch.square(v_s_pred))
     surface_loss_w = torch.mean(torch.square(w_s_pred))
-    surface_loss = (1/3) * (surface_loss_u + surface_loss_v + surface_loss_w)
+    surface_loss = surface_loss_u + surface_loss_v + surface_loss_w
 
     # Real measurements loss
-    # output_u = self(input_u)
-    # u_u_pred = output_u[:, 0]
-    # v_u_pred = output_u[:, 1]
-    # w_u_pred = output_u[:, 2]
-    # u_u_exp = output_u_exp[:, 0]
-    # v_u_exp = output_u_exp[:, 1]
-    # w_u_exp = output_u_exp[:, 2]
-    # real_data_loss_u = torch.mean(torch.square(u_u_pred - u_u_exp))
-    # real_data_loss_v = torch.mean(torch.square(v_u_pred - v_u_exp))
-    # real_data_loss_w = torch.mean(torch.square(w_u_pred - w_u_exp))
-    # real_data_loss = (1/3) * (real_data_loss_u + real_data_loss_v + real_data_loss_w)
-    real_data_loss = torch.tensor(0)
+    output_u = self(input_u)
+    u_u_pred = output_u[:, 0]
+    v_u_pred = output_u[:, 1]
+    w_u_pred = output_u[:, 2]
+    u_u_exp = output_u_exp[:, 0]
+    v_u_exp = output_u_exp[:, 1]
+    w_u_exp = output_u_exp[:, 2]
+    real_data_loss_u = torch.mean(torch.square(u_u_pred - u_u_exp))
+    real_data_loss_v = torch.mean(torch.square(v_u_pred - v_u_exp))
+    real_data_loss_w = torch.mean(torch.square(w_u_pred - w_u_exp))
+    real_data_loss = real_data_loss_u + real_data_loss_v + real_data_loss_w
+    # real_data_loss = torch.tensor(0)
 
     # total loss
     total_loss =  self.lambda_pde_ns    * pde_ns_loss + \
