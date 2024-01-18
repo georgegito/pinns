@@ -18,13 +18,13 @@ class PINN(nn.Module):
 
     for units in hidden_units:
       layer = nn.Linear(in_units, units)
-      # nn.init.xavier_normal_(layer.weight)  # Apply Xavier initialization
+      nn.init.xavier_normal_(layer.weight)  # Apply Xavier initialization
       self.layers.append(layer)
       in_units = units
 
     output_layer = nn.Linear(in_units, output_dim)
 
-    # nn.init.xavier_normal_(output_layer.weight)  # Apply Xavier initialization
+    nn.init.xavier_normal_(output_layer.weight)  # Apply Xavier initialization
 
     self.layers.append(output_layer)
 
