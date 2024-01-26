@@ -6,11 +6,11 @@ import argparse
 # load environment variables
 load_dotenv()
 
-lib_dir = os.environ.get("LOCAL_LIB_DIR")
+lib_dir = os.environ.get("HPC_LIB_DIR")
 sys.path.append(lib_dir)
 
-data_dir_front_wing = os.environ.get("LOCAL_DATA_DIR_FRONT_WING")
-data_dir_rear_wing = os.environ.get("LOCAL_DATA_DIR_REAR_WING")
+data_dir_front_wing = os.environ.get("HPC_DATA_DIR_FRONT_WING")
+data_dir_rear_wing = os.environ.get("HPC_DATA_DIR_REAR_WING")
 
 model_dir_front_wing = os.path.join(data_dir_front_wing, "models")
 model_dir_rear_wing = os.path.join(data_dir_rear_wing, "models")
