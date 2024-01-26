@@ -433,6 +433,11 @@ class PINN(nn.Module):
 
         if self.epoch % checkpoint_epochs == 0:
           checkpoint_path = os.path.join(model_dir, self.model_name, str(self.epoch) + ".pt")
+
+          if not os.path.exists(os.path.dirname(checkpoint_path)):
+            print(f"=> creating checkpoint directory at {os.path.dirname(checkpoint_path)}")
+            os.makedirs(os.path.dirname(checkpoint_path))
+
           self.__save_checkpoint(optimizer, checkpoint_path)
 
       training_clock.stop()

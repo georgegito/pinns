@@ -6,11 +6,14 @@ import argparse
 # load environment variables
 load_dotenv()
 
-lib_dir = os.environ.get("LIB_DIR")
+lib_dir = os.environ.get("LOCAL_LIB_DIR")
 sys.path.append(lib_dir)
 
-data_dir = os.environ.get("DATA_DIR")
-model_dir = os.path.join(data_dir, "models")
+data_dir_front_wing = os.environ.get("LOCAL_DATA_DIR_FRONT_WING")
+data_dir_rear_wing = os.environ.get("LOCAL_DATA_DIR_REAR_WING")
+
+model_dir_front_wing = os.path.join(data_dir_front_wing, "models")
+model_dir_rear_wing = os.path.join(data_dir_rear_wing, "models")
 
 points_filename = "points_final.csv"
 measurements_filename = "measurements.csv"
@@ -33,6 +36,7 @@ parser.add_argument('--Nf', type=int, required=True, help='num of collocation po
 parser.add_argument('--Nb', type=int, required=True, help='num of points to evaluate boundary conditions')
 parser.add_argument('--Nw', type=int, required=True, help='num of points of the surface of the front wing to evaluate boundary conditions')
 parser.add_argument('--Nu', type=int, required=True, help='num of points of real data')
+parser.add_argument('--object', type=str, required=True)
 
 args = parser.parse_args()
 
@@ -52,6 +56,14 @@ Nb = args.Nb
 Nw = args.Nw
 Nu = args.Nu
 
+if args.object == "FRONT_WING":
+    data_dir = data_dir_front_wing
+    model_dir = model_dir_front_wing
+elif args.object == "REAR_WING":
+    data_dir = data_dir_rear_wing
+    model_dir = model_dir_rear_wing
+else:
+    raise ValueError("Invalid object")
 
 import pandas as pd
 import torch

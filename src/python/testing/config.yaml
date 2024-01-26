@@ -1,4 +1,7 @@
-model_name: "v1"
+object: "FRONT_WING"
+# object: "REAR_WING"
+
+model_name: "test"
 
 model_checkpoint_num: 5
 
