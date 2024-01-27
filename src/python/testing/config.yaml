@@ -1,5 +1,5 @@
-object: "FRONT_WING"
-# object: "REAR_WING"
+# object: "FRONT_WING"
+object: "REAR_WING"
 
 model_name: "test"
 

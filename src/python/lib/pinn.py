@@ -211,20 +211,20 @@ class PINN(nn.Module):
     bc_right_loss = bc_right_loss_u
 
     ## Down (No-slip wall): u = 0, v = 0, w = 0 for z = 0
-    output_b_down = self(input_b_down)
-    u_b_down_pred = output_b_down[:, 0]
-    v_b_down_pred = output_b_down[:, 1]
-    w_b_down_pred = output_b_down[:, 2]
-    bc_down_loss_u = torch.mean(torch.square(u_b_down_pred))
-    bc_down_loss_v = torch.mean(torch.square(v_b_down_pred))
-    bc_down_loss_w = torch.mean(torch.square(w_b_down_pred))
-    bc_down_loss = bc_down_loss_u + bc_down_loss_v + bc_down_loss_w
+    # output_b_down = self(input_b_down)
+    # u_b_down_pred = output_b_down[:, 0]
+    # v_b_down_pred = output_b_down[:, 1]
+    # w_b_down_pred = output_b_down[:, 2]
+    # bc_down_loss_u = torch.mean(torch.square(u_b_down_pred))
+    # bc_down_loss_v = torch.mean(torch.square(v_b_down_pred))
+    # bc_down_loss_w = torch.mean(torch.square(w_b_down_pred))
+    # bc_down_loss = bc_down_loss_u + bc_down_loss_v + bc_down_loss_w
 
     ## Down (Slip): w = 0 for z = 0
-    # output_b_down = self(input_b_down)
-    # w_b_down_pred = output_b_down[:, 2]
-    # bc_down_loss_w = torch.mean(torch.square(w_b_down_pred))
-    # bc_down_loss = bc_down_loss_w
+    output_b_down = self(input_b_down)
+    w_b_down_pred = output_b_down[:, 2]
+    bc_down_loss_w = torch.mean(torch.square(w_b_down_pred))
+    bc_down_loss = bc_down_loss_w
 
     # ## Up (Far-field Conditions): p = 1 for z = z_max
     # output_b_up = self(input_b_up)
