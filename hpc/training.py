@@ -21,7 +21,6 @@ measurements_filename = "measurements.csv"
 # parse arguments
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--model_name', type=str, required=True)
 parser.add_argument('--num_hidden_layers', type=int, required=True)
 parser.add_argument('--hidden_layer_size', type=int, required=True)
 parser.add_argument('--epochs', type=int, required=True)
@@ -48,7 +47,6 @@ y_max = args.y_max
 z_max = args.z_max
 num_hidden_layers = args.num_hidden_layers
 hidden_layer_size = args.hidden_layer_size
-model_name = args.model_name
 epochs = args.epochs
 checkpoint_epochs = args.checkpoint_epochs
 Nf = args.Nf
@@ -80,7 +78,7 @@ input_dim = 3
 output_dim = 4
 hidden_layers = [hidden_layer_size for _ in range(num_hidden_layers)]
 
-pinn = PINN(input_dim, output_dim, hidden_layers, model_name).to(device)
+pinn = PINN(input_dim, output_dim, hidden_layers).to(device)
 
 optimizer = torch.optim.LBFGS(pinn.parameters(), lr=1, line_search_fn="strong_wolfe")
 

@@ -8,7 +8,7 @@ from matplotlib import pyplot as plt
 
 class PINN(nn.Module):
 
-  def __init__(self, input_dim: int, output_dim: int, hidden_units: int, model_name: str):
+  def __init__(self, input_dim: int, output_dim: int, hidden_units: int, model_name: str = None):
 
     super(PINN, self).__init__()
 
@@ -57,7 +57,11 @@ class PINN(nn.Module):
     self.input_dim = input_dim
     self.output_dim = output_dim
     self.hidden_units = hidden_units
-    self.model_name = model_name
+
+    if model_name is None:
+      self.model_name = utils.NameGenerator().generate_name()
+    else:
+      self.model_name = model_name
 
     self.lambda_pde_ns = .1
     self.lambda_pde_ps = .1

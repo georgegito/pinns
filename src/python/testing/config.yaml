@@ -3,7 +3,7 @@ object: "FRONT_WING"
 
 model_name: "test"
 
-model_checkpoint_num: 5
+model_checkpoint_num: 1000
 
 x_max: 1
 y_max: 1

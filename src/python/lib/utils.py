@@ -2,8 +2,7 @@ import numpy as np
 import torch
 from scipy.stats.qmc import Sobol
 import time
-import math
-
+import random
 
 def stack_xyzt_tensors(x: torch.tensor, y: torch.tensor, z: torch.tensor, t: torch.tensor) -> torch.tensor:
   return torch.stack((x, y, z, t), axis=-1)
@@ -276,27 +275,42 @@ class ReLoBRaLo:
 
 
   def __compute_lambda_i(self, L, i, t_index, lambda_i_history):
-      if t_index < 0: exit()
+    if t_index < 0: exit()
 
-      lambda_i_hist = self.__compute_lambda_i_hist(L, i, t_index, lambda_i_history)
-      lambda_i_bal = self.__compute_lambda_i_bal(L, i, t_index, t_index-1)
-      lambda_i = self.alpha * lambda_i_hist + (1 - self.alpha) * lambda_i_bal
+    lambda_i_hist = self.__compute_lambda_i_hist(L, i, t_index, lambda_i_history)
+    lambda_i_bal = self.__compute_lambda_i_bal(L, i, t_index, t_index-1)
+    lambda_i = self.alpha * lambda_i_hist + (1 - self.alpha) * lambda_i_bal
 
-      return lambda_i
+    return lambda_i
 
 
   def compute_next_lambdas(self, L):
-      m = len(L)
-      n = len(L[0])
+    m = len(L)
+    n = len(L[0])
 
-      lambda_i_history = [[0 for _ in range(n)] for _ in range(m)]
-      next_lambdas = []
+    lambda_i_history = [[0 for _ in range(n)] for _ in range(m)]
+    next_lambdas = []
 
-      for t in range(n):
-          for i in range(m):
-              lambda_i_history[i][t] = self.__compute_lambda_i(L, i, t, lambda_i_history)
-
+    for t in range(n):
       for i in range(m):
-          next_lambdas.append(lambda_i_history[i][n-1])
+        lambda_i_history[i][t] = self.__compute_lambda_i(L, i, t, lambda_i_history)
 
-      return next_lambdas
+    for i in range(m):
+      next_lambdas.append(lambda_i_history[i][n-1])
+
+    return next_lambdas
+
+
+class NameGenerator:
+  def __init__(self):
+    self.tech_words = ['Aero', 'Atmos', 'JetStream', 'Vortex', 'Wind', 'Gust', 'Breeze', 'AirFlow', 'Sky', 'Stratos']
+    self.adjective_words = ['Precise', 'Accurate', 'Analytic', 'Dynamic', 'Elegant', 'Robust', 'Optimized', 'Advanced', 'Intelligent', 'Rapid']
+    self.futuristic_words = ['Voyager', 'Frontier', 'Horizon', 'Innovator', 'Pioneer', 'Navigator', 'Quantica', 'Cosmos', 'Nebula', 'Galaxy']
+
+  def generate_name(self):
+    code = f"{random.randint(0, 999):03d}"
+    return ''.join([
+      random.choice(self.tech_words), 
+      random.choice(self.adjective_words), 
+      random.choice(self.futuristic_words),
+      code])

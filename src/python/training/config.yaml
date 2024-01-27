@@ -5,7 +5,7 @@ model_name: "test"
 
 hidden_units: [500, 500, 500]
 
-epochs: 500
+epochs: 1000
 
 checkpoint_epochs: 100
 
