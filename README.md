@@ -21,10 +21,11 @@ The loss function of the network is comprehensive and includes 10 distinct compo
 9. **No-Slip Surface BC**: Ensuring that the fluid adheres to the solid surfaces, a key aspect in aerodynamic simulations.
 10. **Real Data**: Integrating real-world data into the model to enhance its predictive accuracy and validity.
 
-TODO: add formula
-TODO: describe ReLoBRaLo algorithm for adaptive loss
-
 This elaborate loss function ensures that the neural network not only learns the underlying physics of fluid dynamics but also adheres to the specific boundary conditions and real-world data, making it a capable tool for predicting the aerodynamic characteristics of racing car wings.
+
+**TODO**: add loss function formula
+
+**TODO**: describe ReLoBRaLo algorithm for adaptive loss
 
 ## Results
 ### Front Wing Simulation - AtmosElegantNavigator105
