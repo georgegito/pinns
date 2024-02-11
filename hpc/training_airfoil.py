@@ -50,14 +50,23 @@ Ns = args.Ns
 import pandas as pd
 import torch
 from airfoil_pinn import AirfoilPINN
+from naca4digit_airfoil import Naca4DigitAirfoil
 import utils
 
 device = utils.get_device()
 print(f"Device: {device}")
 
+chord = 1.0
+m = 0.02
+p = 0.4
+t = 0.12
+num_points = 100
+
+airfoil = Naca4DigitAirfoil(chord, m, p, t)
+
 hidden_layers = [hidden_layer_size for _ in range(num_hidden_layers)]
 
-pinn = AirfoilPINN(hidden_layers).to(device)
+pinn = AirfoilPINN(hidden_layers, airfoil).to(device)
 
 optimizer = torch.optim.LBFGS(pinn.parameters(), lr=1, line_search_fn="strong_wolfe")
 
