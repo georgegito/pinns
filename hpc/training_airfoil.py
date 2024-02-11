@@ -28,7 +28,8 @@ parser.add_argument('--y_min', type=float, required=True)
 parser.add_argument('--y_max', type=float, required=True)
 parser.add_argument('--Nf', type=int, required=True, help='num of collocation points')
 parser.add_argument('--Nb', type=int, required=True, help='num of points to evaluate boundary conditions')
-parser.add_argument('--Ns', type=int, required=True, help='num of points of the surface of the front wing to evaluate boundary conditions')
+parser.add_argument('--Ns', type=int, required=True, help='num of points of the surface of the airfoil to evaluate boundary conditions')
+parser.add_argument('--Nin', type=int, required=True, help='num of points inside the airfoil to evaluate boundary conditions')
 
 args = parser.parse_args()
 
@@ -46,6 +47,7 @@ checkpoint_epochs = args.checkpoint_epochs
 Nf = args.Nf
 Nb = args.Nb
 Ns = args.Ns
+Nin = args.Nin
 
 import pandas as pd
 import torch
@@ -77,6 +79,7 @@ pinn.train_pinn(
   Nf=Nf, 
   Nb=Nb, 
   Ns=Ns, 
+  Nin=Nin, 
   x_min=x_min, 
   x_max=x_max, 
   y_min=y_min, 

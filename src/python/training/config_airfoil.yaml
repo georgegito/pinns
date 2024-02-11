@@ -1,4 +1,4 @@
-hidden_units: [500, 500, 500]
+hidden_units: [100, 100, 100]
 
 epochs: 1000
 
@@ -16,5 +16,6 @@ x_max: 1.5
 y_max: 0.5
 
 Nf: 10000   # num of collocation points -> pde evaluation
-Nb: 1000   # num of points to evaluate boundary conditions
-Ns: 1000   # num of points of the surface of the airfoil to evaluate boundary conditions
+Nb: 1000    # num of points to evaluate boundary conditions
+Ns: 1000    # num of points of the surface of the airfoil to evaluate boundary conditions
+Nin: 1000   # num of points inside the airfoil to evaluate boundary conditions
