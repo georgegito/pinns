@@ -157,4 +157,7 @@ class Naca4DigitAirfoil:
     - x, y: Coordinates of the airfoil.
     """
     ## TODO: Implement this method
-    return (self.xu.concatenate(self.self.xl), self.yu.concatenate(self.yl))
+    x_concatenated = np.concatenate((self.xu, self.xl), axis=0)
+    y_concatenated = np.concatenate((self.yu, self.yl), axis=0)
+
+    return (x_concatenated, y_concatenated)

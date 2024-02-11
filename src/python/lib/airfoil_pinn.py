@@ -380,10 +380,10 @@ class AirfoilPINN(nn.Module):
                                                      num_samples=Nf)
 
     # filter out the points that are inside the airfoil
-    _, exterior_samples = self.airfoil.classify_points(samples_f)
+    _, exterior_samples = self.airfoil.classify_points(np.array(samples_f).T)
 
-    x_f = utils.tensor_from_array(exterior_samples[0], device=device, requires_grad=True)
-    y_f = utils.tensor_from_array(exterior_samples[1], device=device, requires_grad=True)
+    x_f = utils.tensor_from_array(exterior_samples[:, 0], device=device, requires_grad=True)
+    y_f = utils.tensor_from_array(exterior_samples[:, 1], device=device, requires_grad=True)
 
     # boundary condition points
     ## inflow, x=x_min
@@ -415,7 +415,7 @@ class AirfoilPINN(nn.Module):
 
     ## up, z=1
     Nb_up = utils.nearest_power_of_2(int(Nb/6))
-    samples_b_up = utils.qmc_sample_points_in_domain_2d(_x_min=x_min, _x_max=x_max,
+    samples_b_up = utils.qmc_sample_points_in_domain_1d(_x_min=x_min, _x_max=x_max,
                                                         num_samples=Nb_up)
 
     x_b_up = utils.tensor_from_array(samples_b_up, device=device, requires_grad=False)
@@ -424,8 +424,8 @@ class AirfoilPINN(nn.Module):
 
     # points on the surface of the airfoil
     surface_points = self.airfoil.sample_surface_points(Ns)
-    x_s = utils.tensor_from_array(surface_points[0])
-    y_s = utils.tensor_from_array(surface_points[1])
+    x_s = utils.tensor_from_array(surface_points[:, 0], device=device, requires_grad=False)
+    y_s = utils.tensor_from_array(surface_points[:, 1], device=device, requires_grad=False)
 
     xy_s = utils.stack_xy_tensors(x_s, y_s)
 
