@@ -646,7 +646,7 @@ class AirfoilPINN(nn.Module):
     return _pinn, _optimizer
 
 
-  def plot_learning_curves(self):
+  def plot_learning_curves(self, output_dir: str, save: bool = False):
     fig, axs = plt.subplots(4, 2, figsize=(20, 15))
 
     linewidth = 0.5
@@ -672,6 +672,11 @@ class AirfoilPINN(nn.Module):
     axs[3, 0].plot(self.logs['surface_loss'], linewidth=linewidth)
     axs[3, 0].set_title('Surface loss')
 
+    _output_dir = os.path.join(output_dir, self.model_name)
+
+    if os.path.exists(os.path.dirname(_output_dir)):
+      print(f"=> saving learning curves plot at {os.path.dirname(_output_dir)}")
+      plt.savefig(os.path.join(_output_dir, "learning_curves.png"))
 
   def plot_lambdas(self):
     fig, axs = plt.subplots(4, 2, figsize=(20, 15))
