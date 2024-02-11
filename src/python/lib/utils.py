@@ -11,6 +11,8 @@ def stack_xyzt_tensors(x: torch.tensor, y: torch.tensor, z: torch.tensor, t: tor
 def stack_xyz_tensors(x: torch.tensor, y: torch.tensor, z: torch.tensor) -> torch.tensor:
   return torch.stack((x, y, z), axis=-1)
 
+def stack_xy_tensors(x: torch.tensor, y: torch.tensor) -> torch.tensor:
+  return torch.stack((x, y), axis=-1)
 
 def tensor_from_array(arr: np.ndarray, device: torch.device, requires_grad: bool) -> torch.tensor:
   return torch.tensor(arr, device=device, requires_grad=requires_grad, dtype=torch.float32)
@@ -59,6 +61,18 @@ def sample_points_in_domain_4d_space_time(_x_min: float, _x_max: float,
   t = samples[:, 3]
 
   return x, y, z, t
+
+def qmc_sample_points_in_domain_1d(_x_min: float, _x_max: float, 
+                                   num_samples: int) -> np.ndarray:
+  sobol = Sobol(d=1)  # 1 dimension
+  samples = sobol.random_base2(m=int(np.log2(num_samples)))
+
+  # Apply domain transformations for space
+  samples[:, 0] = _x_min + (_x_max - _x_min) * samples[:, 0]
+
+  x = samples[:, 0]
+  
+  return x
 
 def qmc_sample_points_in_domain_2d(_x_min: float, _x_max: float, 
                                    _y_min: float, _y_max: float, 
@@ -159,6 +173,8 @@ def zeros(num: int) -> np.ndarray:
 def ones(num: int) -> np.ndarray:
   return np.ones(num)
 
+def full(num: int, value: float) -> np.ndarray:
+  return np.full(num, value)
 
 def grad(x: torch.Tensor, y: torch.Tensor, create_graph=True) -> torch.Tensor:
   return torch.autograd.grad(x, y, grad_outputs=torch.ones_like(x), create_graph=create_graph, retain_graph=True, only_inputs=True)[0]

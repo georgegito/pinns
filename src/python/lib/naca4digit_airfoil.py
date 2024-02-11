@@ -144,3 +144,17 @@ class Naca4DigitAirfoil:
         exterior_points.append([x, y])
     
     return np.array(interior_points), np.array(exterior_points)
+  
+  
+  def sample_surface_points(self, num_points: int) -> tuple:
+    """
+    Sample points on the upper and lower surfaces of the airfoil.
+
+    Parameters:
+    - num_points: Number of points to sample on each surface (upper and lower).
+
+    Returns:
+    - x, y: Coordinates of the airfoil.
+    """
+    ## TODO: Implement this method
+    return (self.xu.concatenate(self.self.xl), self.yu.concatenate(self.yl))
