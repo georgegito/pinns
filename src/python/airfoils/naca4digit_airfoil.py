@@ -2,7 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class Naca4DigitAirfoil:
-  def __init__(self, chord, m, p, t, num_points=1000):
+
+  def __init__(self, chord: float, m: float, p: float, t: float, num_points: int=1000):
     """
     - chord: Chord length.
     - m: Maximum camber as a fraction of the chord.
@@ -17,19 +18,33 @@ class Naca4DigitAirfoil:
     self.xu, self.yu, self.xl, self.yl = self.__generate_surface_points(num_points)
 
 
-  def plot(self):
-    plt.plot(self.xu, self.yu, 'r-', label='Upper Surface')
-    plt.plot(self.xl, self.yl, 'b-', label='Lower Surface')
-    plt.fill_between(self.xu, self.yu, self.yl, color='skyblue', label='Airfoil')
-    plt.axis('equal')
-    plt.legend()
-    plt.xlabel('Chord Length')
-    plt.ylabel('Vertical Distance')
-    plt.title('NACA 4-Digit Airfoil')
-    plt.grid(True)
+  def plot(self, ax=None):
+    """
+    Plot the upper and lower surfaces of an airfoil and fill the area between them.
+
+    Parameters:
+    - ax: Optional matplotlib axes object to plot on. If None, creates a new figure.
+
+    """
+    if ax is None:
+      fig, ax = plt.subplots()  # Create new figure and axes if not provided
+
+    ax.plot(self.xu, self.yu, 'r-', label='Upper Surface')
+    ax.plot(self.xl, self.yl, 'b-', label='Lower Surface')
+    ax.fill_between(self.xu, self.yu, self.yl, color='skyblue', label='Airfoil')
+    ax.axis('equal')
+    ax.legend()
+    ax.set_xlabel('Chord Length')
+    ax.set_ylabel('Vertical Distance')
+    ax.set_title('NACA 4-Digit Airfoil')
+    ax.grid(True)
+
+    # If you created a new figure, show it; otherwise, let the caller handle showing or further modification.
+    if ax is None:
+      plt.show()
 
 
-  def __generate_surface_points(self, num_points):
+  def __generate_surface_points(self, num_points: int) -> tuple:
     """
     Generate the surface coordinates of a NACA 4-digit airfoil.
 
@@ -71,7 +86,7 @@ class Naca4DigitAirfoil:
     return xu, yu, xl, yl
   
   
-  def generate_interior_points(self, num_interior_points=1000):
+  def generate_interior_points(self, num_interior_points=1000) -> tuple:
     """
     Generate points inside the airfoil by interpolating between the upper and lower surfaces.
 
@@ -99,8 +114,9 @@ class Naca4DigitAirfoil:
       y_in.append(y)
     
     return np.array(x_in), np.array(y_in)
-  
-  def classify_points(self, points):
+
+
+  def classify_points(self, points: np.ndarray) -> tuple:
     """
     Classifies pre-sampled points as either interior or exterior relative to an airfoil.
 
@@ -112,9 +128,10 @@ class Naca4DigitAirfoil:
     - interior_points: Points that are inside the airfoil.
     - exterior_points: Points that are outside the airfoil.
     """
+
     interior_points = []
     exterior_points = []
-    
+
     for x, y in points:
       y_upper = np.interp(x, self.xu, self.yu, left=np.nan, right=np.nan)
       y_lower = np.interp(x, self.xl, self.yl, left=np.nan, right=np.nan)
