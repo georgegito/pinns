@@ -27,7 +27,7 @@ class AirfoilPINN(nn.Module):
       self.layers.append(layer)
       _in_units = units
 
-    output_layer = nn.Linear(self.input_dim, self.output_dim)
+    output_layer = nn.Linear(_in_units, self.output_dim)
 
     nn.init.xavier_normal_(output_layer.weight)  # Apply Xavier initialization
 
@@ -138,11 +138,11 @@ class AirfoilPINN(nn.Module):
     pde_ps_loss = torch.mean(torch.square(f4))
     
     # Boundary conditions loss
-    ## Inlet: u = -in_velocity, v = 0 & p = 1 for x = x_min
+    ## Inlet: u = in_velocity, v = 0 & p = 1 for x = x_min
     output_b_in = self(input_b_in)
     u_b_in_pred = output_b_in[:, 0]
     v_b_in_pred = output_b_in[:, 1]
-    u_b_in_true = torch.full_like(u_b_in_pred, -1 * in_velocity)
+    u_b_in_true = torch.full_like(u_b_in_pred, in_velocity)
     bc_in_loss_u = torch.mean(torch.square(u_b_in_pred - u_b_in_true))
     bc_in_loss_v = torch.mean(torch.square(v_b_in_pred))
     bc_in_loss = bc_in_loss_u + bc_in_loss_v
@@ -413,7 +413,7 @@ class AirfoilPINN(nn.Module):
     y_b_down = utils.tensor_from_array(utils.full(Nb_down, y_min), device=device, requires_grad=False)
     xy_b_down = utils.stack_xy_tensors(x_b_down, y_b_down)
 
-    ## up, z=1
+    ## up, y=y_max
     Nb_up = utils.nearest_power_of_2(int(Nb/6))
     samples_b_up = utils.qmc_sample_points_in_domain_1d(_x_min=x_min, _x_max=x_max,
                                                         num_samples=Nb_up)
@@ -424,8 +424,8 @@ class AirfoilPINN(nn.Module):
 
     # points on the surface of the airfoil
     surface_points = self.airfoil.sample_surface_points(Ns)
-    x_s = utils.tensor_from_array(surface_points[:, 0], device=device, requires_grad=False)
-    y_s = utils.tensor_from_array(surface_points[:, 1], device=device, requires_grad=False)
+    x_s = utils.tensor_from_array(surface_points[0], device=device, requires_grad=False)
+    y_s = utils.tensor_from_array(surface_points[1], device=device, requires_grad=False)
 
     xy_s = utils.stack_xy_tensors(x_s, y_s)
 
@@ -594,7 +594,7 @@ class AirfoilPINN(nn.Module):
       _output_dim = checkpoint['output_dim']
       _hidden_units = checkpoint['hidden_units']
  
-      _pinn = AirfoilPINN(hidden_units=_hidden_units, model_name=model_name, )
+      _pinn = AirfoilPINN(hidden_units=_hidden_units, model_name=model_name, airfoil=None)
 
       _pinn.epoch = checkpoint['epoch']
       _pinn.logs = checkpoint['logs']
@@ -647,7 +647,7 @@ class AirfoilPINN(nn.Module):
 
 
   def plot_learning_curves(self):
-    fig, axs = plt.subplots(3, 4, figsize=(20, 15))
+    fig, axs = plt.subplots(4, 2, figsize=(20, 15))
 
     linewidth = 0.5
 
@@ -657,24 +657,24 @@ class AirfoilPINN(nn.Module):
     axs[0, 1].plot(self.logs['pde_ps_loss'], linewidth=linewidth)
     axs[0, 1].set_title('PDE loss - Poisson')
 
-    axs[0, 2].plot(self.logs['bc_in_loss'], linewidth=linewidth)
-    axs[0, 2].set_title('BC loss - Inlet')
+    axs[1, 0].plot(self.logs['bc_in_loss'], linewidth=linewidth)
+    axs[1, 0].set_title('BC loss - Inlet')
 
-    axs[0, 3].plot(self.logs['bc_out_loss'], linewidth=linewidth)
-    axs[0, 3].set_title('BC loss - Outlet')
+    axs[1, 1].plot(self.logs['bc_out_loss'], linewidth=linewidth)
+    axs[1, 1].set_title('BC loss - Outlet')
 
-    axs[1, 2].plot(self.logs['bc_down_loss'], linewidth=linewidth)
-    axs[1, 2].set_title('BC loss - Down')
+    axs[2, 0].plot(self.logs['bc_down_loss'], linewidth=linewidth)
+    axs[2, 0].set_title('BC loss - Down')
 
-    axs[1, 3].plot(self.logs['bc_up_loss'], linewidth=linewidth)
-    axs[1, 3].set_title('BC loss - Up')
+    axs[2, 1].plot(self.logs['bc_up_loss'], linewidth=linewidth)
+    axs[2, 1].set_title('BC loss - Up')
 
-    axs[2, 0].plot(self.logs['surface_loss'], linewidth=linewidth)
-    axs[2, 0].set_title('Surface loss')
+    axs[3, 0].plot(self.logs['surface_loss'], linewidth=linewidth)
+    axs[3, 0].set_title('Surface loss')
 
 
   def plot_lambdas(self):
-    fig, axs = plt.subplots(3, 4, figsize=(20, 15))
+    fig, axs = plt.subplots(4, 2, figsize=(20, 15))
 
     linewidth = 0.5
 
@@ -684,21 +684,21 @@ class AirfoilPINN(nn.Module):
     axs[0, 1].plot(self.lambdas['pde_ps'], linewidth=linewidth)
     axs[0, 1].set_title('lambda PDE - Poisson')
 
-    axs[0, 2].plot(self.lambdas['bc_in'], linewidth=linewidth)
-    axs[0, 2].set_title('lambda BC - Inlet')
+    axs[1, 0].plot(self.lambdas['bc_in'], linewidth=linewidth)
+    axs[1, 0].set_title('lambda BC - Inlet')
 
-    axs[0, 3].plot(self.lambdas['bc_out'], linewidth=linewidth)
-    axs[0, 3].set_title('lambda BC - Outlet')
+    axs[1, 1].plot(self.lambdas['bc_out'], linewidth=linewidth)
+    axs[1, 1].set_title('lambda BC - Outlet')
 
-    axs[1, 2].plot(self.lambdas['bc_down'], linewidth=linewidth)
-    axs[1, 2].set_title('lambda BC - Down')
+    axs[2, 0].plot(self.lambdas['bc_down'], linewidth=linewidth)
+    axs[2, 0].set_title('lambda BC - Down')
 
-    axs[1, 3].plot(self.lambdas['bc_up'], linewidth=linewidth)
-    axs[1, 3].set_title('lambda BC - Up')
+    axs[2, 1].plot(self.lambdas['bc_up'], linewidth=linewidth)
+    axs[2, 1].set_title('lambda BC - Up')
 
-    axs[2, 0].plot(self.lambdas['surface'], linewidth=linewidth)
-    axs[2, 0].set_title('lambda Surface')
+    axs[3, 0].plot(self.lambdas['surface'], linewidth=linewidth)
+    axs[3, 0].set_title('lambda Surface')
 
-    for i in range(1, 10):
-      axs[2, 2].plot(self.lambdas[list(self.lambdas.keys())[i]], linewidth=linewidth)
-    axs[2, 2].set_title('All lambdas')
+    # for i in range(1, 7):
+    #   axs[2, 2].plot(self.lambdas[list(self.lambdas.keys())[i]], linewidth=linewidth)
+    # axs[2, 2].set_title('All lambdas')

@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.interpolate import interp1d
 
 class Naca4DigitAirfoil:
 
@@ -17,6 +18,11 @@ class Naca4DigitAirfoil:
 
     self.xu, self.yu, self.xl, self.yl = self.__generate_surface_points(num_points)
 
+    self.x_min = self.xu.min()
+    self.x_max = self.xu.max()
+    self.y_min = self.yl.min()
+    self.y_max = self.yu.max()
+
 
   def plot(self, ax=None):
     """
@@ -29,8 +35,8 @@ class Naca4DigitAirfoil:
     if ax is None:
       fig, ax = plt.subplots()  # Create new figure and axes if not provided
 
-    ax.plot(self.xu, self.yu, 'r-', label='Upper Surface')
-    ax.plot(self.xl, self.yl, 'b-', label='Lower Surface')
+    ax.plot(self.xu, self.yu, 'black', linewidth=0.5)
+    ax.plot(self.xl, self.yl, 'black', linewidth=0.5)
     ax.fill_between(self.xu, self.yu, self.yl, color='skyblue', label='Airfoil')
     ax.axis('equal')
     ax.legend()
@@ -156,8 +162,18 @@ class Naca4DigitAirfoil:
     Returns:
     - x, y: Coordinates of the airfoil.
     """
-    ## TODO: Implement this method
-    x_concatenated = np.concatenate((self.xu, self.xl), axis=0)
-    y_concatenated = np.concatenate((self.yu, self.yl), axis=0)
+    # Define interpolation functions for upper and lower surfaces
+    interp_upper = interp1d(self.xu, self.yu, kind='cubic')
+    interp_lower = interp1d(self.xl, self.yl, kind='cubic')
 
-    return (x_concatenated, y_concatenated)
+    # Sample new x positions
+    new_x_positions = np.linspace(self.x_min+0.01, self.x_max-0.01, num_points) # More finely spaced x points
+
+    # Use the interpolation functions to get new y values
+    new_yu = interp_upper(new_x_positions)
+    new_yl = interp_lower(new_x_positions)
+
+    x = np.concatenate((new_x_positions, new_x_positions))
+    y = np.concatenate((new_yu, new_yl))
+
+    return x, y
