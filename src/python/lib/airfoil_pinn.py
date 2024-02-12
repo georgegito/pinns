@@ -360,7 +360,11 @@ class AirfoilPINN(nn.Module):
     # collocation points
     samples_f = utils.qmc_sample_points_in_domain_2d(_x_min=x_min, _x_max=x_max, 
                                                      _y_min=y_min, _y_max=y_max, 
-                                                     num_samples=Nf)
+                                                     num_samples=Nf/2)
+
+    samples_f_near_the_airfoil = self.airfoil.sample_points_in_domain_around(Nf, 0.2*self.airfoil.chord)
+
+    samples_f = np.concatenate((samples_f, samples_f_near_the_airfoil), axis=1)
 
     # filter out the points that are inside the airfoil
     _, exterior_samples = self.airfoil.classify_points(np.array(samples_f).T)
