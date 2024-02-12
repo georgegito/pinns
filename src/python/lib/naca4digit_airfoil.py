@@ -5,7 +5,7 @@ import utils
 
 class Naca4DigitAirfoil:
 
-  def __init__(self, chord: float, m: float, p: float, t: float, num_points: int=1000):
+  def __init__(self, chord: float, m: float, p: float, t: float, alpha_deg = 0, num_points: int=1000):
     """
     - chord: Chord length.
     - m: Maximum camber as a fraction of the chord.
@@ -17,7 +17,7 @@ class Naca4DigitAirfoil:
     self.p = p
     self.t = t
 
-    self.xu, self.yu, self.xl, self.yl = self.__generate_surface_points(num_points)
+    self.xu, self.yu, self.xl, self.yl = self.__generate_surface_points(num_points ,alpha_deg)
 
     self.x_min = self.xu.min()
     self.x_max = self.xu.max()
@@ -51,46 +51,52 @@ class Naca4DigitAirfoil:
       plt.show()
 
 
-  def __generate_surface_points(self, num_points: int) -> tuple:
+  def __generate_surface_points(self, num_points: int, alpha_deg: float) -> tuple:
     """
-    Generate the surface coordinates of a NACA 4-digit airfoil.
+    Generate the surface coordinates of a NACA 4-digit airfoil at a specified angle of attack.
 
     Parameters:
     - num_points: Number of points to sample on each surface (upper and lower).
+    - alpha_deg: Angle of attack in degrees.
 
     Returns:
-    - xu, yu, xl, yl: Coordinates of the airfoil.
+    - xu_r, yu_r, xl_r, yl_r: Rotated coordinates of the airfoil.
     """
     x = np.linspace(0, self.chord, num_points)
-    
-    # Thickness distribution
     yt = 5*self.t*self.chord*(0.2969*np.sqrt(x/self.chord) - 0.1260*(x/self.chord) - 0.3516*(x/self.chord)**2 + 0.2843*(x/self.chord)**3 - 0.1015*(x/self.chord)**4)
-    
-    # Camber line
     yc = np.zeros_like(x)
+    dyc_dx = np.zeros_like(x)
+
     for i in range(len(x)):
       if x[i] < self.p*self.chord:
         yc[i] = (self.m/self.p**2)*(2*self.p*(x[i]/self.chord) - (x[i]/self.chord)**2)
-      else:
-        yc[i] = (self.m/(1-self.p)**2)*((1-2*self.p) + 2*self.p*(x[i]/self.chord) - (x[i]/self.chord)**2)
-
-    # Camber line slope
-    dyc_dx = np.zeros_like(x)
-    for i in range(len(x)):
-      if x[i] < self.p*self.chord:
         dyc_dx[i] = (2*self.m/self.p**2)*(self.p - x[i]/self.chord)
       else:
+        yc[i] = (self.m/(1-self.p)**2)*((1-2*self.p) + 2*self.p*(x[i]/self.chord) - (x[i]/self.chord)**2)
         dyc_dx[i] = (2*self.m/(1-self.p)**2)*(self.p - x[i]/self.chord)
   
     theta = np.arctan(dyc_dx)
     
-    # Upper and lower surfaces
     xu = x - yt*np.sin(theta)
     yu = yc + yt*np.cos(theta)
     xl = x + yt*np.sin(theta)
     yl = yc - yt*np.cos(theta)
-    
-    return xu, yu, xl, yl
+
+    # Convert AoA to radians
+    alpha_rad = np.radians(alpha_deg)
+
+    # Rotation matrix
+    R = np.array([[np.cos(alpha_rad), np.sin(alpha_rad)], [-np.sin(alpha_rad), np.cos(alpha_rad)]])
+
+    # Initialize rotated coordinates
+    xu_r, yu_r, xl_r, yl_r = np.zeros_like(xu), np.zeros_like(yu), np.zeros_like(xl), np.zeros_like(yl)
+
+    # Apply rotation
+    for i in range(len(xu)):
+      [xu_r[i], yu_r[i]] = R @ np.array([xu[i], yu[i]])
+      [xl_r[i], yl_r[i]] = R @ np.array([xl[i], yl[i]])
+
+    return xu_r, yu_r, xl_r, yl_r
   
   
   def generate_interior_points(self, num_interior_points=1000) -> tuple:
