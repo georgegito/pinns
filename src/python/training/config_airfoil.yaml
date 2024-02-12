@@ -1,14 +1,15 @@
-hidden_units: [100, 100, 100]
+hidden_units: [50, 50, 50, 50, 50]
 
-epochs: 1000
+epochs: 3000
 
-checkpoint_epochs: 500
+checkpoint_epochs: 100
 
 in_velocity: 1
 
-rho: 1.225
+# rho: 1.225
 # mu: 1.81e-5
-mu: 0
+rho: 1.
+mu: 0.01
 
 x_min: -0.5
 y_min: -0.5
