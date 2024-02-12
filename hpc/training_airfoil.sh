@@ -45,6 +45,9 @@ hidden_layer_size=50
 # hidden_layer_size=500
 
 
+epochs=1000
+checkpoint_epochs=500
+
 in_velocity=1
 rho=1.
 mu=0.01
