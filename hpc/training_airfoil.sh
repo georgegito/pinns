@@ -63,4 +63,4 @@ Ns=1000
 Nin=1000
 
 
-python training_airfoil.py --num_hidden_layers $num_hidden_layers --hidden_layer_size $hidden_layer_size --epochs $epochs --checkpoint_epochs $checkpoint_epochs --in_velocity $in_velocity --rho $rho -mu $mu --x_min $x_min --y_min $y_min --x_max $x_max --y_max $y_max --Nf $Nf --Nb $Nb --Ns $Ns --Nin $Nin
+python training_airfoil.py --num_hidden_layers $num_hidden_layers --hidden_layer_size $hidden_layer_size --epochs $epochs --checkpoint_epochs $checkpoint_epochs --in_velocity $in_velocity --rho $rho --mu $mu --x_min $x_min --y_min $y_min --x_max $x_max --y_max $y_max --Nf $Nf --Nb $Nb --Ns $Ns --Nin $Nin

@@ -112,14 +112,7 @@ class AirfoilPINN(nn.Module):
     v_yy = utils.grad(v_y, y_f, False)
 
     p_x = utils.grad(p, x_f)
-    p_xx = utils.grad(p_x, x_f, False)
     p_y = utils.grad(p, y_f)
-    p_yy = utils.grad(p_y, y_f, False)
-
-    # b = self.__compute_b(u=u, v=v, 
-    #                    u_x=u_x, u_y=u_y, 
-    #                    v_x=v_x, v_y=v_y, 
-    #                    rho=rho)
 
     # PDE loss
     ## Navier-Stokes equations
@@ -135,8 +128,6 @@ class AirfoilPINN(nn.Module):
     pde_ns_loss = torch.mean(torch.square(f1)) + \
                   torch.mean(torch.square(f2)) + \
                   torch.mean(torch.square(f3))
-    
-    # pde_ps_loss = torch.mean(torch.square(f4))
     
     # Boundary conditions loss
     ## Inlet: u = in_velocity, v = 0 & p = 1 for x = x_min
@@ -675,7 +666,7 @@ class AirfoilPINN(nn.Module):
 
     if save and os.path.exists(os.path.dirname(_output_dir)):
       print(f"=> saving learning curves plot at {os.path.dirname(_output_dir)}")
-      plt.savefig(os.path.join(_output_dir, "learning_curves.png"))
+      plt.savefig(os.path.join(_output_dir, "fig/learning_curves.png"))
 
   def plot_lambdas(self):
     fig, axs = plt.subplots(4, 2, figsize=(20, 15))
