@@ -1,6 +1,6 @@
 hidden_units: [50, 50, 50, 50, 50]
 
-epochs: 3000
+epochs: 1000
 
 checkpoint_epochs: 100
 

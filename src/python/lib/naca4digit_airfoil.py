@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
+import utils
 
 class Naca4DigitAirfoil:
 
@@ -177,3 +178,16 @@ class Naca4DigitAirfoil:
     y = np.concatenate((new_yu, new_yl))
 
     return x, y
+  
+  def sample_points_in_domain_around(self, num_points: int, distance: float) -> tuple:
+    """
+    Sample points in the domain around the airfoil.
+
+    Parameters:
+    - num_points: Number of points to sample.
+    - distance: Distance around the airfoil to sample.
+
+    Returns:
+    - x, y: Coordinates of the points in the domain around the airfoil.
+    """
+    return utils.qmc_sample_points_in_domain_2d(self.x_min - distance, self.x_max + distance, self.y_min - distance, self.y_max + distance, num_points) 

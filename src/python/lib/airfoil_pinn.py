@@ -664,9 +664,9 @@ class AirfoilPINN(nn.Module):
 
     _output_dir = os.path.join(output_dir, self.model_name)
 
-    if save and os.path.exists(os.path.dirname(_output_dir)):
-      print(f"=> saving learning curves plot at {os.path.dirname(_output_dir)}")
-      plt.savefig(os.path.join(_output_dir, "fig/learning_curves.png"))
+    # if save and os.path.exists(os.path.dirname(_output_dir)):
+      # print(f"=> saving learning curves plot at {os.path.dirname(_output_dir)}")
+      # plt.savefig(os.path.join(_output_dir, "fig/learning_curves.png"))
 
   def plot_lambdas(self):
     fig, axs = plt.subplots(4, 2, figsize=(20, 15))

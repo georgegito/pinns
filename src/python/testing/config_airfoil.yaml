@@ -1,6 +1,6 @@
-model_name: "AeroElegantInnovator846"
+model_name: "VortexAccuratePioneer189"
 
-model_checkpoint_num: 200
+model_checkpoint_num: 400
 
 x_min: -0.5
 y_min: -0.5
