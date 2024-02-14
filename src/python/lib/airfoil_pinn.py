@@ -34,18 +34,19 @@ class AirfoilPINN(nn.Module):
     self.layers.append(output_layer)
 
     self.logs = {"total_loss": [], 
-                 "pde_ns_loss": [],
-                 "bc_in_loss": [], "bc_out_loss": [], 
+                 "pde_ns_loss": [], "pde_ps_loss": [],
+                 "bc_in_loss": [], "bc_out_loss": [],
                  "bc_down_loss": [], "bc_up_loss": [], 
                  "surface_loss": [], "interior_loss": []}
 
-    self.lambdas = {"pde_ns": [], 
-                   "bc_in": [], "bc_out": [], 
+    self.lambdas = {"pde_ns": [], "pde_ps": [], 
+                   "bc_in": [], "bc_out": [],
                    "bc_down": [], "bc_up": [], 
                    "surface": [], "interior": []}
 
     self.curent_total_loss = -1
     self.current_pde_nv_loss = -1
+    self.current_pde_ps_loss = -1
     self.current_bc_in_loss = -1
     self.current_bc_out_loss = -1
     self.current_bc_down_loss = -1
@@ -62,6 +63,7 @@ class AirfoilPINN(nn.Module):
       self.model_name = model_name
 
     self.lambda_pde_ns = .1
+    self.lambda_pde_ps = .1
     self.lambda_bc_in = .1
     self.lambda_bc_out = .1
     self.lambda_bc_down = .1
@@ -76,7 +78,7 @@ class AirfoilPINN(nn.Module):
       output = torch.tanh(layer(input))
       # output = torch.relu(layer(input))
       input = output
-    output = self.layers[-1](input)
+    output = torch.tanh(self.layers[-1](input))
     return output
 
 
@@ -112,7 +114,14 @@ class AirfoilPINN(nn.Module):
     v_yy = utils.grad(v_y, y_f, False)
 
     p_x = utils.grad(p, x_f)
+    p_xx = utils.grad(p_x, x_f, False)
     p_y = utils.grad(p, y_f)
+    p_yy = utils.grad(p_y, y_f, False)
+
+    b = self.__compute_b(u=u, v=v, 
+                         u_x=u_x, u_y=u_y, 
+                         v_x=v_x, v_y=v_y, 
+                         rho=rho)
 
     # PDE loss
     ## Navier-Stokes equations
@@ -123,12 +132,14 @@ class AirfoilPINN(nn.Module):
     ### Continuity equation
     f3 = u_x + v_y
     # ### Poisson equation
-    # f4 = p_xx + p_yy - b
+    f4 = p_xx + p_yy - b
 
     pde_ns_loss = torch.mean(torch.square(f1)) + \
                   torch.mean(torch.square(f2)) + \
                   torch.mean(torch.square(f3))
-    
+
+    pde_ps_loss = torch.mean(torch.square(f4))
+
     # Boundary conditions loss
     ## Inlet: u = in_velocity, v = 0 & p = 1 for x = x_min
     output_b_in = self(input_b_in)
@@ -139,10 +150,10 @@ class AirfoilPINN(nn.Module):
     bc_in_loss_v = torch.mean(torch.square(v_b_in_pred))
     bc_in_loss = bc_in_loss_u + bc_in_loss_v
 
-    ## Outlet: p = 1 for x = x_max
+    ## Outlet: p = 0.5 for x = x_max
     output_b_out = self(input_b_out)
     p_b_out_pred = output_b_out[:, 2]
-    p_b_out_true = torch.ones_like(p_b_out_pred)
+    p_b_out_true = torch.full_like(p_b_out_pred, 0.5)
     bc_out_loss_p = torch.mean(torch.square(p_b_out_pred - p_b_out_true))
     bc_out_loss = bc_out_loss_p
 
@@ -179,6 +190,7 @@ class AirfoilPINN(nn.Module):
 
     # total loss
     total_loss =  self.lambda_pde_ns    * pde_ns_loss + \
+                  self.lambda_pde_ps    * pde_ps_loss + \
                   self.lambda_bc_in     * bc_in_loss + \
                   self.lambda_bc_out    * bc_out_loss + \
                   self.lambda_bc_down   * bc_down_loss + \
@@ -186,7 +198,7 @@ class AirfoilPINN(nn.Module):
                   self.lambda_surface   * surface_loss + \
                   self.lambda_interior  * interior_loss
 
-    return total_loss, pde_ns_loss, \
+    return total_loss, pde_ns_loss, pde_ns_loss, \
            bc_in_loss, bc_out_loss, \
            bc_down_loss, bc_up_loss, \
            surface_loss, interior_loss
@@ -206,13 +218,14 @@ class AirfoilPINN(nn.Module):
 
     training_input = self.__generate_inputs(x_min=x_min, y_min=y_min, x_max=x_max, y_max=y_max, Nf=Nf, Nb=Nb, Ns=Ns, Nin=Nin, device=device)
 
-    total_loss, pde_ns_loss, bc_in_loss, bc_out_loss, bc_down_loss, bc_up_loss, surface_loss, interior_loss = self.loss(
+    total_loss, pde_ns_loss, pde_ps_loss, bc_in_loss, bc_out_loss, bc_down_loss, bc_up_loss, surface_loss, interior_loss = self.loss(
                     *training_input,
                     in_velocity,
                     mu, rho)
 
     self.current_total_loss = total_loss.item()
     self.current_pde_ns_loss = pde_ns_loss.item()
+    self.current_pde_ps_loss = pde_ps_loss.item()
     self.current_bc_in_loss = bc_in_loss.item()
     self.current_bc_out_loss = bc_out_loss.item()
     self.current_bc_down_loss = bc_down_loss.item()
@@ -291,7 +304,7 @@ class AirfoilPINN(nn.Module):
                         device=device))
 
         self.__log_metrics(self.current_total_loss, 
-                           self.current_pde_ns_loss, 
+                           self.current_pde_ns_loss, self.current_pde_ps_loss, 
                            self.current_bc_in_loss, self.current_bc_out_loss, 
                            self.current_bc_down_loss, self.current_bc_up_loss, 
                            self.current_surface_loss, self.current_interior_loss)
@@ -300,8 +313,8 @@ class AirfoilPINN(nn.Module):
 
         self.__update_lambdas(relobralo)
 
-        self.__log_lambdas(self.lambda_pde_ns, 
-                          self.lambda_bc_in, self.lambda_bc_out, 
+        self.__log_lambdas(self.lambda_pde_ns, self.lambda_pde_ps,
+                          self.lambda_bc_in, self.lambda_bc_out,
                           self.lambda_bc_down, self.lambda_bc_up, 
                           self.lambda_surface, self.lambda_interior)
 
@@ -428,30 +441,32 @@ class AirfoilPINN(nn.Module):
 
   def __update_lambdas(self, relobralo: utils.ReLoBRaLo):
     """ Update loss lambdas """
-    losses = [self.logs["pde_ns_loss"], 
-              self.logs["bc_in_loss"], self.logs["bc_out_loss"], 
+    losses = [self.logs["pde_ns_loss"], self.logs["pde_ps_loss"], 
+              self.logs["bc_in_loss"], self.logs["bc_out_loss"],
               self.logs["bc_down_loss"], self.logs["bc_up_loss"], 
               self.logs["surface_loss"], self.logs["interior_loss"]]
 
     lambdas = relobralo.compute_next_lambdas(L=losses)
 
     self.lambda_pde_ns    = lambdas[0]
-    self.lambda_bc_in     = lambdas[1]
-    self.lambda_bc_out    = lambdas[2]
-    self.lambda_bc_down   = lambdas[3]
-    self.lambda_bc_up     = lambdas[4]
-    self.lambda_surface   = lambdas[5]
-    self.lambda_interior  = lambdas[6]
+    self.lambda_pde_ps    = lambdas[1]
+    self.lambda_bc_in     = lambdas[2]
+    self.lambda_bc_out    = lambdas[3]
+    self.lambda_bc_down   = lambdas[4]
+    self.lambda_bc_up     = lambdas[5]
+    self.lambda_surface   = lambdas[6]
+    self.lambda_interior  = lambdas[7]
 
 
   def __log_metrics(self, total_loss: float, 
-                    pde_ns_loss: float, 
+                    pde_ns_loss: float, pde_ps_loss: float,
                     bc_in_loss: float, bc_out_loss: float, 
                     bc_down_loss: float, bc_up_loss: float, 
                     surface_loss: float, interior_loss: float):
     """ Log training metrics """
     self.logs['total_loss'].append(total_loss)
     self.logs['pde_ns_loss'].append(pde_ns_loss)
+    self.logs['pde_ps_loss'].append(pde_ps_loss)
     self.logs['bc_in_loss'].append(bc_in_loss)
     self.logs['bc_out_loss'].append(bc_out_loss)
     self.logs['bc_down_loss'].append(bc_down_loss)
@@ -460,12 +475,13 @@ class AirfoilPINN(nn.Module):
     self.logs['interior_loss'].append(interior_loss)
 
 
-  def __log_lambdas(self, lambda_pde_ns: float, 
-                    lambda_bc_in: float, lambda_bc_out: float, 
+  def __log_lambdas(self, lambda_pde_ns: float, lambda_pde_ps: float,
+                    lambda_bc_in: float, lambda_bc_out: float,
                     lambda_bc_down: float, lambda_bc_up: float, 
                     lambda_surface: float, lambda_interior: float):
       """ Log loss lambdas """
       self.lambdas['pde_ns'].append(lambda_pde_ns)
+      self.lambdas['pde_ps'].append(lambda_pde_ps)
       self.lambdas['bc_in'].append(lambda_bc_in)
       self.lambdas['bc_out'].append(lambda_bc_out)
       self.lambdas['bc_down'].append(lambda_bc_down)
@@ -484,7 +500,8 @@ class AirfoilPINN(nn.Module):
       if self.logs['total_loss']:
           print(f"\nEpoch: {self.epoch}\n"
                 f"\tTotal Loss: {self.logs['total_loss'][-1]:.4f}\n"
-                f"\t(PDE Loss - Navier Stoker: {self.logs['pde_ns_loss'][-1]:.4f}, "
+                f"\tPDE Loss - Navier Stokes: {self.logs['pde_ns_loss'][-1]:.4f}, "
+                f"PDE Loss - Poisson: {self.logs['pde_ps_loss'][-1]:.4f}, "
                 f"BC Inlet Loss: {self.logs['bc_in_loss'][- 1]:.4f}, "
                 f"BC Outlet Loss: {self.logs['bc_out_loss'][- 1]:.4f}, "
                 f"BC Down Loss: {self.logs['bc_down_loss'][- 1]:.4f}, "
@@ -503,7 +520,8 @@ class AirfoilPINN(nn.Module):
         if self.logs['total_loss']:
             print(f"\nEpoch: {_epoch}\n"
                   f"\tTotal Loss: {self.logs['total_loss'][_epoch - 1]:.4f}\n"
-                  f"\t(PDE Loss - Navier Stoker: {self.logs['pde_ns_loss'][_epoch - 1]:.4f}, "
+                  f"\tPDE Loss - Navier Stokes: {self.logs['pde_ns_loss'][_epoch - 1]:.4f}, "
+                  f"PDE Loss - Poisson: {self.logs['pde_ps_loss'][_epoch - 1]:.4f}, "
                   f"BC Inlet Loss: {self.logs['bc_in_loss'][_epoch - 1]:.4f}, "
                   f"BC Outlet Loss: {self.logs['bc_out_loss'][_epoch - 1]:.4f}, "
                   f"BC Down Loss: {self.logs['bc_down_loss'][_epoch - 1]:.4f}, "
@@ -640,30 +658,33 @@ class AirfoilPINN(nn.Module):
     return _pinn, _optimizer
 
 
-  def plot_learning_curves(self, output_dir: str, save: bool = False):
+  def plot_learning_curves(self, output_dir: str, save: bool = False, start_index=0):
     fig, axs = plt.subplots(4, 2, figsize=(20, 15))
 
     linewidth = 0.5
 
-    axs[0, 0].plot(self.logs['pde_ns_loss'], linewidth=linewidth)
+    axs[0, 0].plot(self.logs['pde_ns_loss'][start_index:], linewidth=linewidth)
     axs[0, 0].set_title('PDE loss - Navier Stokes')
 
-    axs[1, 0].plot(self.logs['bc_in_loss'], linewidth=linewidth)
+    axs[0, 1].plot(self.logs['pde_ps_loss'][start_index:], linewidth=linewidth)
+    axs[0, 1].set_title('PDE loss - Poisson')
+
+    axs[1, 0].plot(self.logs['bc_in_loss'][start_index:], linewidth=linewidth)
     axs[1, 0].set_title('BC loss - Inlet')
 
-    axs[1, 1].plot(self.logs['bc_out_loss'], linewidth=linewidth)
+    axs[1, 1].plot(self.logs['bc_out_loss'][start_index:], linewidth=linewidth)
     axs[1, 1].set_title('BC loss - Outlet')
 
-    axs[2, 0].plot(self.logs['bc_down_loss'], linewidth=linewidth)
+    axs[2, 0].plot(self.logs['bc_down_loss'][start_index:], linewidth=linewidth)
     axs[2, 0].set_title('BC loss - Down')
 
-    axs[2, 1].plot(self.logs['bc_up_loss'], linewidth=linewidth)
+    axs[2, 1].plot(self.logs['bc_up_loss'][start_index:], linewidth=linewidth)
     axs[2, 1].set_title('BC loss - Up')
 
-    axs[3, 0].plot(self.logs['surface_loss'], linewidth=linewidth)
+    axs[3, 0].plot(self.logs['surface_loss'][start_index:], linewidth=linewidth)
     axs[3, 0].set_title('Surface loss')
 
-    axs[3, 1].plot(self.logs['interior_loss'], linewidth=linewidth)
+    axs[3, 1].plot(self.logs['interior_loss'][start_index:], linewidth=linewidth)
     axs[3, 1].set_title('Interior loss')
 
     _output_dir = os.path.join(output_dir, self.model_name)
@@ -679,6 +700,9 @@ class AirfoilPINN(nn.Module):
 
     axs[0, 0].plot(self.lambdas['pde_ns'], linewidth=linewidth)
     axs[0, 0].set_title('lambda PDE - Navier Stokes')
+
+    axs[0, 0].plot(self.lambdas['pde_ps'], linewidth=linewidth)
+    axs[0, 0].set_title('lambda PDE - Poisson')
 
     axs[1, 0].plot(self.lambdas['bc_in'], linewidth=linewidth)
     axs[1, 0].set_title('lambda BC - Inlet')
