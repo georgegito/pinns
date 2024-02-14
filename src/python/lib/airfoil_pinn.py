@@ -375,9 +375,9 @@ class AirfoilPINN(nn.Module):
                                                      _y_min=y_min, _y_max=y_max, 
                                                      num_samples=Nf/2)
 
-    samples_f_near_the_airfoil = self.airfoil.sample_points_in_domain_around(Nf, 0.2*self.airfoil.chord)
+    samples_f_near_the_airfoil_leading_edge = self.airfoil.sample_points_in_domain_around_leading_edge(Nf, 0.2*self.airfoil.chord)
 
-    samples_f = np.concatenate((samples_f, samples_f_near_the_airfoil), axis=1)
+    samples_f = np.concatenate((samples_f, samples_f_near_the_airfoil_leading_edge), axis=1)
 
     # filter out the points that are inside the airfoil
     _, exterior_samples = self.airfoil.classify_points(np.array(samples_f).T)

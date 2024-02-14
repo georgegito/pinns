@@ -185,6 +185,7 @@ class Naca4DigitAirfoil:
 
     return x, y
   
+
   def sample_points_in_domain_around(self, num_points: int, distance: float) -> tuple:
     """
     Sample points in the domain around the airfoil.
@@ -197,3 +198,19 @@ class Naca4DigitAirfoil:
     - x, y: Coordinates of the points in the domain around the airfoil.
     """
     return utils.qmc_sample_points_in_domain_2d(self.x_min - distance, self.x_max + distance, self.y_min - distance, self.y_max + distance, num_points) 
+  
+
+  def sample_points_in_domain_around_leading_edge(self, num_points: int, distance: float) -> tuple:
+    """
+    Sample points in the domain around the airfoil leading edge.
+
+    Parameters:
+    - num_points: Number of points to sample.
+    - distance: Distance around the airfoil to sample.
+
+    Returns:
+    - x, y: Coordinates of the points in the domain around the airfoil leading edge.
+    """
+    leading_edge_x = self.xu[0]
+    leading_edge_y = self.yu[0]
+    return utils.qmc_sample_points_in_domain_2d(leading_edge_x - distance, leading_edge_x + distance, leading_edge_y - distance, leading_edge_y + distance, num_points) 
