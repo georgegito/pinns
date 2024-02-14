@@ -198,7 +198,7 @@ class AirfoilPINN(nn.Module):
                   self.lambda_surface   * surface_loss + \
                   self.lambda_interior  * interior_loss
 
-    return total_loss, pde_ns_loss, pde_ns_loss, \
+    return total_loss, pde_ns_loss, pde_ps_loss, \
            bc_in_loss, bc_out_loss, \
            bc_down_loss, bc_up_loss, \
            surface_loss, interior_loss
@@ -701,8 +701,8 @@ class AirfoilPINN(nn.Module):
     axs[0, 0].plot(self.lambdas['pde_ns'], linewidth=linewidth)
     axs[0, 0].set_title('lambda PDE - Navier Stokes')
 
-    axs[0, 0].plot(self.lambdas['pde_ps'], linewidth=linewidth)
-    axs[0, 0].set_title('lambda PDE - Poisson')
+    axs[0, 1].plot(self.lambdas['pde_ps'], linewidth=linewidth)
+    axs[0, 1].set_title('lambda PDE - Poisson')
 
     axs[1, 0].plot(self.lambdas['bc_in'], linewidth=linewidth)
     axs[1, 0].set_title('lambda BC - Inlet')

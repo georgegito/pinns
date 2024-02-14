@@ -81,7 +81,7 @@ class PINN(nn.Module):
       output = torch.tanh(layer(input))
       # output = torch.relu(layer(input))
       input = output
-    output = torch.tanh(self.layers[-1](input))
+    output = self.layers[-1](input)
     return output
 
 
