@@ -1,20 +1,20 @@
-hidden_units: [50, 50, 50, 50, 50]
+hidden_units: [32, 32, 32, 32, 32, 32, 32, 32, 32, 32]
 
-epochs: 1000
+epochs: 5000
 
 checkpoint_epochs: 100
 
-in_velocity: 1
+in_velocity: 0.5
 
 # rho: 1.225
 # mu: 1.81e-5
 rho: 1.
 mu: 0.01
 
-x_min: -0.5
-y_min: -0.5
-x_max: 1.5
-y_max: 0.5
+x_min: -1.5
+y_min: -1
+x_max: 2.5
+y_max: 1
 
 Nf: 10000   # num of collocation points -> pde evaluation
 Nb: 1000    # num of points to evaluate boundary conditions
