@@ -1,8 +1,19 @@
 hidden_units: [32, 32, 32, 32, 32, 32, 32, 32, 32, 32]
+# hidden_units: [32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32]
+# hidden_units: [64, 64, 64, 64, 64, 64, 64, 64, 64, 64]
+
+activation_function: tanh
+# activation_function: sigmoid
+
+optimizer: 
+  name: adam
+  lr: 0.0005 #5e-4
+#   name: lbfgs
+  # lr: 1
 
 epochs: 5000
 
-checkpoint_epochs: 100
+checkpoint_epochs: 200
 
 in_velocity: 0.5
 

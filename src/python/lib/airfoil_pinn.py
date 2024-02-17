@@ -9,7 +9,7 @@ from naca4digit_airfoil import Naca4DigitAirfoil
 
 class AirfoilPINN(nn.Module):
 
-  def __init__(self, hidden_units: int, airfoil: Naca4DigitAirfoil, model_name: str = None):
+  def __init__(self, hidden_units: int, activation_function: str , airfoil: Naca4DigitAirfoil, model_name: str = None):
 
     super(AirfoilPINN, self).__init__()
 
@@ -19,6 +19,8 @@ class AirfoilPINN(nn.Module):
 
     self.input_dim = 2
     self.output_dim = 3
+
+    self.activation_function = activation_function
 
     _in_units = self.input_dim
     for units in hidden_units:
@@ -34,19 +36,19 @@ class AirfoilPINN(nn.Module):
     self.layers.append(output_layer)
 
     self.logs = {"total_loss": [], 
-                 "pde_ns_loss": [], "pde_ps_loss": [],
+                 "pde_ns_loss": [], #"pde_ps_loss": [],
                  "bc_in_loss": [], "bc_out_loss": [],
                  "bc_down_loss": [], "bc_up_loss": [], 
                  "surface_loss": [], "interior_loss": []}
 
-    self.lambdas = {"pde_ns": [], "pde_ps": [], 
+    self.lambdas = {"pde_ns": [], #"pde_ps": [], 
                    "bc_in": [], "bc_out": [],
                    "bc_down": [], "bc_up": [], 
                    "surface": [], "interior": []}
 
     self.curent_total_loss = -1
     self.current_pde_nv_loss = -1
-    self.current_pde_ps_loss = -1
+    # self.current_pde_ps_loss = -1
     self.current_bc_in_loss = -1
     self.current_bc_out_loss = -1
     self.current_bc_down_loss = -1
@@ -74,11 +76,9 @@ class AirfoilPINN(nn.Module):
 
   def forward(self, input: torch.Tensor) -> torch.Tensor:
     for layer in self.layers[:-1]:
-      # output = torch.sigmoid(layer(input))
-      output = torch.tanh(layer(input))
-      # output = torch.relu(layer(input))
+      output = self.activation_function(layer(input))
       input = output
-    output = torch.tanh(self.layers[-1](input))
+    output = self.activation_function(self.layers[-1](input))
     return output
 
 
