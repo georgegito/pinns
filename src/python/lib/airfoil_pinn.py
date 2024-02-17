@@ -513,7 +513,7 @@ class AirfoilPINN(nn.Module):
   def __save_checkpoint(self, optimizer: torch.optim.Optimizer, file_path: str):
 
     print("=> saving checkpoint '{}'".format(file_path))
-    state = {'name': self.model_name, 'input_dim': self.input_dim, 'output_dim': self.output_dim, 'hidden_units': self.hidden_units, 'epoch': self.epoch, 'state_dict': self.state_dict(),
+    state = {'name': self.model_name, 'input_dim': self.input_dim, 'output_dim': self.output_dim, 'hidden_units': self.hidden_units, 'activation_function': self.activation_function, 'epoch': self.epoch, 'state_dict': self.state_dict(),
               'optimizer': optimizer.state_dict(), "logs": self.logs, "lambdas": self.lambdas}
     torch.save(state, file_path)
 
@@ -524,7 +524,7 @@ class AirfoilPINN(nn.Module):
           print("=> loading checkpoint '{}'".format(file_path))
           checkpoint = torch.load(file_path)
 
-          if self.input_dim != checkpoint['input_dim'] or self.output_dim != checkpoint['output_dim'] or self.hidden_units != checkpoint['hidden_units']:
+          if self.input_dim != checkpoint['input_dim'] or self.output_dim != checkpoint['output_dim'] or self.hidden_units != checkpoint['hidden_units'] or self.activation_function != checkpoint['activation_function']:
             print("=> model architecture mismatch, exiting...")
             exit
 
@@ -583,8 +583,9 @@ class AirfoilPINN(nn.Module):
       _input_dim = checkpoint['input_dim']
       _output_dim = checkpoint['output_dim']
       _hidden_units = checkpoint['hidden_units']
+      _activation_function = checkpoint['_activation_function']
  
-      _pinn = AirfoilPINN(hidden_units=_hidden_units, model_name=model_name, airfoil=None)
+      _pinn = AirfoilPINN(hidden_units=_hidden_units, activation_function=_activation_function, model_name=model_name, airfoil=None)
 
       _pinn.epoch = checkpoint['epoch']
       _pinn.logs = checkpoint['logs']

@@ -35,7 +35,8 @@ domain2:
   x_max: 0.5
   y_max: 0.3
 
-Nf: 10000   # num of collocation points -> pde evaluation
-Nb: 1000    # num of points to evaluate boundary conditions
-Ns: 1000    # num of points of the surface of the airfoil to evaluate boundary conditions
-Nin: 1000   # num of points inside the airfoil to evaluate boundary conditions
+Nf1: 10000   # num of collocation points -> pde evaluation - domain 1
+Nf2: 10000   # num of collocation points -> pde evaluation - domain 2
+Nb:  1000     # num of points to evaluate boundary conditions
+Ns:  1000     # num of points of the surface of the airfoil to evaluate boundary conditions
+Nin: 1000    # num of points inside the airfoil to evaluate boundary conditions
