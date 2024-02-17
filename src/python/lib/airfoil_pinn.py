@@ -99,7 +99,21 @@ class AirfoilPINN(nn.Module):
 
     input_f = utils.stack_xy_tensors(x_f, y_f)
 
-    output_f = self(input_f)
+    inputs = [input_f, input_b_in, input_b_out, input_b_down, input_b_up, input_s, input_interior]
+    concatenated_inputs = torch.cat(inputs, dim=0)
+    concatenated_outputs = self(concatenated_inputs)
+    split_sizes = [input.size(0) for input in inputs]
+    outputs = torch.split(concatenated_outputs, split_sizes, dim=0)
+    output_f, output_b_in, output_b_out, output_b_down, output_b_up, output_s, output_interior = outputs
+
+    # output_f = self(input_f)
+    # output_b_in = self(input_b_in)
+    # output_b_out = self(input_b_out)
+    # output_b_down = self(input_b_down)
+    # output_b_up = self(input_b_up)
+    # output_s = self(input_s)
+    # output_interior = self(input_interior)
+
     u = output_f[:, 0]
     v = output_f[:, 1]
     p = output_f[:, 2]
@@ -138,7 +152,6 @@ class AirfoilPINN(nn.Module):
 
     # Boundary conditions loss
     ## Inlet: u = in_velocity, v = 0 & p = 1 for x = x_min
-    output_b_in = self(input_b_in)
     u_b_in_pred = output_b_in[:, 0]
     v_b_in_pred = output_b_in[:, 1]
     u_b_in_true = torch.full_like(u_b_in_pred, in_velocity)
@@ -147,26 +160,22 @@ class AirfoilPINN(nn.Module):
     bc_in_loss = bc_in_loss_u + bc_in_loss_v
 
     ## Outlet: p = out_pressure for x = x_max
-    output_b_out = self(input_b_out)
     p_b_out_pred = output_b_out[:, 2]
     p_b_out_true = torch.full_like(p_b_out_pred, out_pressure)
     bc_out_loss_p = torch.mean(torch.square(p_b_out_pred - p_b_out_true))
     bc_out_loss = bc_out_loss_p
 
     ## Down (Slip): v = 0 for y = y_min
-    output_b_down = self(input_b_down)
     v_b_down_pred = output_b_down[:, 1]
     bc_down_loss_v = torch.mean(torch.square(v_b_down_pred))
     bc_down_loss = bc_down_loss_v
 
     ## Up (Slip): v = 0 for y = y_max
-    output_b_up = self(input_b_up)
     v_b_up_pred = output_b_up[:, 1]
     bc_up_loss_v = torch.mean(torch.square(v_b_up_pred))
     bc_up_loss = bc_up_loss_v
 
     # Object surface boundary conditions loss
-    output_s = self(input_s)
     u_s_pred = output_s[:, 0]
     v_s_pred = output_s[:, 1]
 
@@ -176,7 +185,6 @@ class AirfoilPINN(nn.Module):
     surface_loss = surface_loss_u + surface_loss_v
 
     # Interior points loss
-    output_interior = self(input_interior)
     u_interior_pred = output_interior[:, 0]
     v_interior_pred = output_interior[:, 1]
 

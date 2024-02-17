@@ -41,9 +41,6 @@ class Naca4DigitAirfoil:
     ax.fill_between(self.xu, self.yu, self.yl, color='skyblue', label='Airfoil')
     ax.axis('equal')
     ax.legend()
-    ax.set_xlabel('Chord Length')
-    ax.set_ylabel('Vertical Distance')
-    ax.set_title('NACA 4-Digit Airfoil')
     ax.grid(True)
 
     # If you created a new figure, show it; otherwise, let the caller handle showing or further modification.
