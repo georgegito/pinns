@@ -16,16 +16,24 @@ epochs: 5000
 checkpoint_epochs: 200
 
 in_velocity: 0.5
+out_pressure: 0.5
 
 # rho: 1.225
 # mu: 1.81e-5
 rho: 1.
 mu: 0.01
 
-x_min: -1.5
-y_min: -1
-x_max: 2.5
-y_max: 1
+domain1:
+  x_min: -1
+  y_min: -0.5
+  x_max: 3
+  y_max: 0.5
+
+domain2:
+  x_min: -0.5
+  y_min: -0.3
+  x_max: 0.5
+  y_max: 0.3
 
 Nf: 10000   # num of collocation points -> pde evaluation
 Nb: 1000    # num of points to evaluate boundary conditions

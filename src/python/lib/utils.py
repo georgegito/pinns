@@ -4,9 +4,23 @@ from scipy.stats.qmc import Sobol
 import time
 import random
 
+
+class Domain2D:
+    def __init__(self, x_min, x_max, y_min, y_max):
+        self.x_min = x_min
+        self.x_max = x_max
+        self.y_min = y_min
+        self.y_max = y_max
+
+    def plot(self, ax, color='black'):
+        ax.plot([self.x_min, self.x_max], [self.y_min, self.y_min], color)
+        ax.plot([self.x_min, self.x_max], [self.y_max, self.y_max], color)
+        ax.plot([self.x_min, self.x_min], [self.y_min, self.y_max], color)
+        ax.plot([self.x_max, self.x_max], [self.y_min, self.y_max], color)
+
+
 def stack_xyzt_tensors(x: torch.tensor, y: torch.tensor, z: torch.tensor, t: torch.tensor) -> torch.tensor:
   return torch.stack((x, y, z, t), axis=-1)
-
 
 def stack_xyz_tensors(x: torch.tensor, y: torch.tensor, z: torch.tensor) -> torch.tensor:
   return torch.stack((x, y, z), axis=-1)
@@ -74,15 +88,13 @@ def qmc_sample_points_in_domain_1d(_x_min: float, _x_max: float,
   
   return x
 
-def qmc_sample_points_in_domain_2d(_x_min: float, _x_max: float, 
-                                   _y_min: float, _y_max: float, 
-                                   num_samples: int) -> np.ndarray:
+def qmc_sample_points_in_domain_2d(domain: Domain2D, num_samples: int) -> np.ndarray:
   sobol = Sobol(d=2)  # 2 dimensions
   samples = sobol.random_base2(m=int(np.log2(num_samples)))
 
   # Apply domain transformations for space
-  samples[:, 0] = _x_min + (_x_max - _x_min) * samples[:, 0]
-  samples[:, 1] = _y_min + (_y_max - _y_min) * samples[:, 1]
+  samples[:, 0] = domain.x_min + (domain.x_max - domain.x_min) * samples[:, 0]
+  samples[:, 1] = domain.y_min + (domain.y_max - domain.y_min) * samples[:, 1]
 
   x = samples[:, 0]
   y = samples[:, 1]
@@ -330,3 +342,4 @@ class NameGenerator:
       random.choice(self.adjective_words), 
       random.choice(self.futuristic_words),
       code])
+

@@ -65,7 +65,7 @@ class AirfoilPINN(nn.Module):
       self.model_name = model_name
 
     self.lambda_pde_ns = .1
-    self.lambda_pde_ps = .1
+    # self.lambda_pde_ps = .1
     self.lambda_bc_in = .1
     self.lambda_bc_out = .1
     self.lambda_bc_down = .1
@@ -93,6 +93,7 @@ class AirfoilPINN(nn.Module):
       input_s: torch.Tensor,
       input_interior: torch.Tensor,
       in_velocity: torch.Tensor,
+      out_pressure: torch.Tensor,
       mu: float, rho: float
   ) -> torch.Tensor:
 
@@ -114,9 +115,9 @@ class AirfoilPINN(nn.Module):
     v_yy = utils.grad(v_y, y_f, False)
 
     p_x = utils.grad(p, x_f)
-    p_xx = utils.grad(p_x, x_f, False)
+    # p_xx = utils.grad(p_x, x_f, False)
     p_y = utils.grad(p, y_f)
-    p_yy = utils.grad(p_y, y_f, False)
+    # p_yy = utils.grad(p_y, y_f, False)
 
     # PDE loss
     ## Navier-Stokes equations
@@ -145,10 +146,10 @@ class AirfoilPINN(nn.Module):
     bc_in_loss_v = torch.mean(torch.square(v_b_in_pred))
     bc_in_loss = bc_in_loss_u + bc_in_loss_v
 
-    ## Outlet: p = 0.5 for x = x_max
+    ## Outlet: p = out_pressure for x = x_max
     output_b_out = self(input_b_out)
     p_b_out_pred = output_b_out[:, 2]
-    p_b_out_true = torch.full_like(p_b_out_pred, 0.5)
+    p_b_out_true = torch.full_like(p_b_out_pred, out_pressure)
     bc_out_loss_p = torch.mean(torch.square(p_b_out_pred - p_b_out_true))
     bc_out_loss = bc_out_loss_p
 
@@ -200,22 +201,22 @@ class AirfoilPINN(nn.Module):
   def closure(
       self, 
       optimizer: torch.optim.Optimizer, 
-      Nf: int, Nb: int, Ns: int, Nin: int,
-      x_min: float, y_min: float, 
-      x_max: float, y_max: float, 
-      in_velocity: int, 
+      Nf1: int, Nf2: int, Nb: int, Ns: int, Nin: int,
+      domain1: utils.Domain2D, domain2: utils.Domain2D,
+      in_velocity: float, out_pressure: float,
       mu: float, rho: float, 
       device: torch.device
   ) -> torch.Tensor:
 
     optimizer.zero_grad()
 
-    training_input = self.__generate_inputs(x_min=x_min, y_min=y_min, x_max=x_max, y_max=y_max, Nf=Nf, Nb=Nb, Ns=Ns, Nin=Nin, device=device)
+    training_input = self.__generate_inputs(domain1=domain1, domain2=domain2, Nf1=Nf1, Nf2=Nf2, Nb=Nb, Ns=Ns, Nin=Nin, device=device)
 
     total_loss, pde_ns_loss, bc_in_loss, bc_out_loss, bc_down_loss, bc_up_loss, surface_loss, interior_loss = self.loss(
                     *training_input,
-                    in_velocity,
-                    mu, rho)
+                    in_velocity=in_velocity,
+                    out_pressure=out_pressure,
+                    mu=mu, rho=rho)
 
     self.current_total_loss = total_loss.item()
     self.current_pde_ns_loss = pde_ns_loss.item()
@@ -236,10 +237,9 @@ class AirfoilPINN(nn.Module):
         self, 
         epochs: int, 
         optimizer: torch.optim.Optimizer, 
-        Nf: int, Nb: int, Ns: int, Nin: int,
-        x_min: float, y_min: float,
-        x_max: float, y_max: float,
-        in_velocity: int,
+        Nf1: int, Nf2: int, Nb: int, Ns: int, Nin: int,
+        domain1: utils.Domain2D, domain2: utils.Domain2D,
+        in_velocity: float, out_pressure: float,
         mu: float, rho: float,
         device: torch.device,
         checkpoint_epochs: int,
@@ -249,26 +249,28 @@ class AirfoilPINN(nn.Module):
     print(self)
     print(f"Model name: {self.model_name}")
     print(f"Number of epochs: {epochs}")
-    print(f"Number of collocation points Nf: {Nf}")
+    print(f"Number of collocation points Nf: {Nf1 + Nf2}")
     print(f"Number of boundary condition points Nb: {Nb}")
     print(f"Number of object surface points Ns: {Ns}")
-    print(f"Number of interior object points Ns: {Nin}")
-    print(f"X min: {x_min}, Y min: {y_min}")
-    print(f"X max: {x_max}, Y max: {y_max}")
+    print(f"Number of interior object points Nin: {Nin}")
+    print(f"X min: {domain1.x_min}, Y min: {domain1.y_min}")
+    print(f"X max: {domain1.x_max}, Y max: {domain1.y_max}")
     print(f"mu: {mu}, rho: {rho}")
     print(f"Inflow velocity: {in_velocity}")
+    print(f"Outflow pressure: {out_pressure}")
     print(f"Device: {device}")
     print(f"Checkpoint epochs: {checkpoint_epochs}")
     print(f"Model directory: {model_dir}")
     print("=======================================================")
-    print("=> converting Nf, Nb, Ns to nearest power of 2...") # Quasi - Monte Carlo sampling requirement
+    print("=> converting Nf1, Nf2, Nb, Ns to nearest power of 2...") # Quasi - Monte Carlo sampling requirement
 
-    Nf = utils.nearest_power_of_2(Nf)
+    Nf1 = utils.nearest_power_of_2(Nf1)
+    Nf2 = utils.nearest_power_of_2(Nf2)
     Nb = utils.nearest_power_of_2(Nb)
     Ns = utils.nearest_power_of_2(Ns)
     Nin = utils.nearest_power_of_2(Nin)
 
-    print(f"Nf: {Nf}, Nb: {Nb}, Ns: {Ns}, Nin: {Nin}")
+    print(f"Nf1: {Nf1}, Nf2: {Nf2}, Nb: {Nb}, Ns: {Ns}, Nin: {Nin}")
     print("=======================================================")
     print("=> starting training...")
     print("=======================================================")
@@ -290,10 +292,10 @@ class AirfoilPINN(nn.Module):
         optimizer.step(lambda: 
                       self.closure(
                         optimizer=optimizer, 
-                        Nf=Nf, Nb=Nb, Ns=Ns, Nin=Nin,
-                        x_min=x_min, y_min=y_min,
-                        x_max=x_max, y_max=y_max,
+                        Nf1=Nf1, Nf2=Nf2, Nb=Nb, Ns=Ns, Nin=Nin,
+                        domain1=domain1, domain2=domain2,
                         in_velocity=in_velocity,
+                        out_pressure=out_pressure,
                         mu=mu, rho=rho,
                         device=device))
 
@@ -348,18 +350,17 @@ class AirfoilPINN(nn.Module):
 
   def __generate_inputs(
         self, 
-        x_min: float , x_max: float, y_min: float, y_max: float,  
-        Nf: int, Nb: int, Ns: int, Nin: int,
+        domain1: utils.Domain2D, domain2: utils.Domain2D,
+        Nf1: int, Nf2: int, Nb: int, Ns: int, Nin: int,
         device: torch.device) -> tuple:
+    
+    x_min, x_max, y_min, y_max = domain1.x_min, domain1.x_max, domain1.y_min, domain1.y_max
 
     # collocation points
-    samples_f = utils.qmc_sample_points_in_domain_2d(_x_min=x_min, _x_max=x_max, 
-                                                     _y_min=y_min, _y_max=y_max, 
-                                                     num_samples=Nf/2)
+    samples_f1 = utils.qmc_sample_points_in_domain_2d(domain=domain1, num_samples=Nf1)
+    samples_f2 = utils.qmc_sample_points_in_domain_2d(domain=domain2, num_samples=Nf2)
 
-    samples_f_near_the_airfoil_leading_edge = self.airfoil.sample_points_in_domain_around_leading_edge(Nf, 0.2*self.airfoil.chord)
-
-    samples_f = np.concatenate((samples_f, samples_f_near_the_airfoil_leading_edge), axis=1)
+    samples_f = np.concatenate((samples_f1, samples_f2), axis=1)
 
     # filter out the points that are inside the airfoil
     _, exterior_samples = self.airfoil.classify_points(np.array(samples_f).T)
@@ -470,11 +471,6 @@ class AirfoilPINN(nn.Module):
       self.lambdas['bc_up'].append(lambda_bc_up)
       self.lambdas['surface'].append(lambda_surface)
       self.lambdas['interior'].append(lambda_interior)
-
-
-  def __get_logs(self):
-    """ Retrieve the logged metrics """
-    return self.logs
 
 
   def print_current_metrics(self):
