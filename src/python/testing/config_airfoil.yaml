@@ -1,6 +1,6 @@
-model_name: "AirFlowAccurateFrontier140"
+model_name: "GustDynamicPioneer106"
 
-model_checkpoint_num: 5000
+model_checkpoint_num: 1400
 
 domain:
   x_min: -1

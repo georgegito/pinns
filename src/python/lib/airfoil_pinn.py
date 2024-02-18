@@ -74,12 +74,21 @@ class AirfoilPINN(nn.Module):
     self.lambda_interior = .1
 
 
-  def forward(self, input: torch.Tensor) -> torch.Tensor:
-    for layer in self.layers[:-1]:
-      output = self.activation_function(layer(input))
-      input = output
-    output = self.activation_function(self.layers[-1](input))
-    return output
+  def forward(self, x: torch.Tensor) -> torch.Tensor:
+
+    # input layer
+    x = self.activation_function(self.layers[0](x))
+    # x = nn.BatchNorm1d(x.size(1))(x)
+
+    # hidden layers
+    for layer in self.layers[1:-1]:
+      x = self.activation_function(layer(x))
+      # x = nn.BatchNorm1d(x.size(1))(x)
+
+    # output layer
+    x = self.activation_function(self.layers[-1](x))
+
+    return x
 
 
   def loss(
@@ -591,7 +600,7 @@ class AirfoilPINN(nn.Module):
       _input_dim = checkpoint['input_dim']
       _output_dim = checkpoint['output_dim']
       _hidden_units = checkpoint['hidden_units']
-      _activation_function = checkpoint['_activation_function']
+      _activation_function = checkpoint['activation_function']
  
       _pinn = AirfoilPINN(hidden_units=_hidden_units, activation_function=_activation_function, model_name=model_name, airfoil=None)
 

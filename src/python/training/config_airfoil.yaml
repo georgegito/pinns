@@ -11,7 +11,7 @@ optimizer:
 #   name: lbfgs
   # lr: 1
 
-epochs: 5000
+epochs: 2000
 
 checkpoint_epochs: 200
 

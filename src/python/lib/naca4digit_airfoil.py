@@ -24,6 +24,41 @@ class Naca4DigitAirfoil:
     self.y_min = self.yl.min()
     self.y_max = self.yu.max()
 
+  def translate(self, dx: float, dy: float):
+    """
+    Translate the airfoil by a specified displacement.
+
+    Parameters:
+    - dx: Displacement in the x-direction.
+    - dy: Displacement in the y-direction.
+    """
+    self.xu += dx
+    self.yu += dy
+    self.xl += dx
+    self.yl += dy
+    self.x_min += dx
+    self.x_max += dx
+    self.y_min += dy
+    self.y_max += dy
+
+
+  def scale(self, sx: float, sy: float):
+    """
+    Scale the airfoil by a specified factor.
+
+    Parameters:
+    - sx: Scaling factor in the x-direction.
+    - sy: Scaling factor in the y-direction.
+    """
+    self.xu *= sx
+    self.yu *= sy
+    self.xl *= sx
+    self.yl *= sy
+    self.x_min *= sx
+    self.x_max *= sx
+    self.y_min *= sy
+    self.y_max *= sy
+
 
   def plot(self, ax=None):
     """

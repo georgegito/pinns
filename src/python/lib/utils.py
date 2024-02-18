@@ -18,6 +18,18 @@ class Domain2D:
         ax.plot([self.x_min, self.x_min], [self.y_min, self.y_max], color)
         ax.plot([self.x_max, self.x_max], [self.y_min, self.y_max], color)
 
+    def translate(self, dx: float, dy: float):
+        self.x_min += dx
+        self.x_max += dx
+        self.y_min += dy
+        self.y_max += dy
+
+    def scale(self, sx: float, sy: float):
+        self.x_min *= sx
+        self.x_max *= sx
+        self.y_min *= sy
+        self.y_max *= sy
+
 
 def stack_xyzt_tensors(x: torch.tensor, y: torch.tensor, z: torch.tensor, t: torch.tensor) -> torch.tensor:
   return torch.stack((x, y, z, t), axis=-1)
