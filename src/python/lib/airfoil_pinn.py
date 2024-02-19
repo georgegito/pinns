@@ -9,7 +9,7 @@ from naca4digit_airfoil import Naca4DigitAirfoil
 
 class AirfoilPINN(nn.Module):
 
-  def __init__(self, hidden_units: int, activation_function: str , airfoil: Naca4DigitAirfoil, model_name: str = None):
+  def __init__(self, hidden_units: int, activation_function: str , airfoil: Naca4DigitAirfoil, domain: utils.Domain2D, u_in: float, p_out: float, model_name: str = None):
 
     super(AirfoilPINN, self).__init__()
 
@@ -21,6 +21,10 @@ class AirfoilPINN(nn.Module):
     self.output_dim = 3
 
     self.activation_function = activation_function
+
+    self.domain = domain
+    self.u_in = u_in
+    self.p_out = p_out
 
     _in_units = self.input_dim
     for units in hidden_units:
@@ -101,8 +105,6 @@ class AirfoilPINN(nn.Module):
       input_b_up: torch.Tensor,
       input_s: torch.Tensor,
       input_interior: torch.Tensor,
-      in_velocity: torch.Tensor,
-      out_pressure: torch.Tensor,
       mu: float, rho: float
   ) -> torch.Tensor:
 
@@ -163,14 +165,14 @@ class AirfoilPINN(nn.Module):
     ## Inlet: u = in_velocity, v = 0 & p = 1 for x = x_min
     u_b_in_pred = output_b_in[:, 0]
     v_b_in_pred = output_b_in[:, 1]
-    u_b_in_true = torch.full_like(u_b_in_pred, in_velocity)
+    u_b_in_true = torch.full_like(u_b_in_pred, self.u_in)
     bc_in_loss_u = torch.mean(torch.square(u_b_in_pred - u_b_in_true))
     bc_in_loss_v = torch.mean(torch.square(v_b_in_pred))
     bc_in_loss = bc_in_loss_u + bc_in_loss_v
 
     ## Outlet: p = out_pressure for x = x_max
     p_b_out_pred = output_b_out[:, 2]
-    p_b_out_true = torch.full_like(p_b_out_pred, out_pressure)
+    p_b_out_true = torch.full_like(p_b_out_pred, self.p_out)
     bc_out_loss_p = torch.mean(torch.square(p_b_out_pred - p_b_out_true))
     bc_out_loss = bc_out_loss_p
 
@@ -220,7 +222,6 @@ class AirfoilPINN(nn.Module):
       optimizer: torch.optim.Optimizer, 
       Nf1: int, Nf2: int, Nb: int, Ns: int, Nin: int,
       domain1: utils.Domain2D, domain2: utils.Domain2D,
-      in_velocity: float, out_pressure: float,
       mu: float, rho: float, 
       device: torch.device
   ) -> torch.Tensor:
@@ -231,8 +232,6 @@ class AirfoilPINN(nn.Module):
 
     total_loss, pde_ns_loss, bc_in_loss, bc_out_loss, bc_down_loss, bc_up_loss, surface_loss, interior_loss = self.loss(
                     *training_input,
-                    in_velocity=in_velocity,
-                    out_pressure=out_pressure,
                     mu=mu, rho=rho)
 
     self.current_total_loss = total_loss.item()
@@ -256,7 +255,6 @@ class AirfoilPINN(nn.Module):
         optimizer: torch.optim.Optimizer, 
         Nf1: int, Nf2: int, Nb: int, Ns: int, Nin: int,
         domain1: utils.Domain2D, domain2: utils.Domain2D,
-        in_velocity: float, out_pressure: float,
         mu: float, rho: float,
         device: torch.device,
         checkpoint_epochs: int,
@@ -273,8 +271,8 @@ class AirfoilPINN(nn.Module):
     print(f"X min: {domain1.x_min}, Y min: {domain1.y_min}")
     print(f"X max: {domain1.x_max}, Y max: {domain1.y_max}")
     print(f"mu: {mu}, rho: {rho}")
-    print(f"Inflow velocity: {in_velocity}")
-    print(f"Outflow pressure: {out_pressure}")
+    print(f"Inflow velocity: {self.u_in}")
+    print(f"Outflow pressure: {self.p_out}")
     print(f"Device: {device}")
     print(f"Checkpoint epochs: {checkpoint_epochs}")
     print(f"Model directory: {model_dir}")
@@ -311,8 +309,6 @@ class AirfoilPINN(nn.Module):
                         optimizer=optimizer, 
                         Nf1=Nf1, Nf2=Nf2, Nb=Nb, Ns=Ns, Nin=Nin,
                         domain1=domain1, domain2=domain2,
-                        in_velocity=in_velocity,
-                        out_pressure=out_pressure,
                         mu=mu, rho=rho,
                         device=device))
 
@@ -526,11 +522,12 @@ class AirfoilPINN(nn.Module):
         else:
             print("No metrics to display.")
 
-
   def __save_checkpoint(self, optimizer: torch.optim.Optimizer, file_path: str):
 
     print("=> saving checkpoint '{}'".format(file_path))
-    state = {'name': self.model_name, 'input_dim': self.input_dim, 'output_dim': self.output_dim, 'hidden_units': self.hidden_units, 'activation_function': self.activation_function, 'epoch': self.epoch, 'state_dict': self.state_dict(),
+    state = {'name': self.model_name, 'input_dim': self.input_dim, 'output_dim': self.output_dim, 'hidden_units': self.hidden_units, 'activation_function': self.activation_function, 
+             'u_in': self.u_in, 'p_out': self.p_out, 'x_min': self.domain.x_min, 'x_max': self.domain.x_max, 'y_min': self.domain.y_min, 'y_max': self.domain.y_max,
+             'epoch': self.epoch, 'state_dict': self.state_dict(),
               'optimizer': optimizer.state_dict(), "logs": self.logs, "lambdas": self.lambdas}
     torch.save(state, file_path)
 
@@ -601,8 +598,19 @@ class AirfoilPINN(nn.Module):
       _output_dim = checkpoint['output_dim']
       _hidden_units = checkpoint['hidden_units']
       _activation_function = checkpoint['activation_function']
+      _u_in = checkpoint['u_in']
+      _p_out = checkpoint['p_out']
+      _x_min = checkpoint['x_min']
+      _x_max = checkpoint['x_max']
+      _y_min = checkpoint['y_min']
+      _y_max = checkpoint['y_max']
  
-      _pinn = AirfoilPINN(hidden_units=_hidden_units, activation_function=_activation_function, model_name=model_name, airfoil=None)
+      _pinn = AirfoilPINN(hidden_units=_hidden_units, 
+                          activation_function=_activation_function, 
+                          model_name=model_name, 
+                          domain=utils.Domain2D(x_min=_x_min, x_max=_x_max, y_min=_y_min, y_max=_y_max), 
+                          u_in=_u_in, p_out=_p_out,
+                          airfoil=None)
 
       _pinn.epoch = checkpoint['epoch']
       _pinn.logs = checkpoint['logs']

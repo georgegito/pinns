@@ -7,11 +7,12 @@ activation_function: tanh
 
 optimizer: 
   name: adam
-  lr: 0.0005 #5e-4
-#   name: lbfgs
+  # lr: 0.0005 #5e-4
+  lr: 0.01
+  # name: lbfgs
   # lr: 1
 
-epochs: 2000
+epochs: 5000
 
 checkpoint_epochs: 200
 
@@ -24,10 +25,11 @@ rho: 1.
 mu: 0.01
 
 domain1:
-  x_min: -1
-  y_min: -0.5
-  x_max: 3
-  y_max: 0.5
+  x_min: -0.5
+  y_min: -1
+  x_max: 1.5
+  y_max: 1
+
 
 domain2:
   x_min: -0.5

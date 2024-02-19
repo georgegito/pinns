@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 import sys
-import argparse
+import yaml
 
 # load environment variables
 load_dotenv()
