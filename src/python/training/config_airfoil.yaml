@@ -7,14 +7,14 @@ activation_function: tanh
 
 optimizer: 
   name: adam
-  # lr: 0.0005 #5e-4
-  lr: 0.01
+  lr: 0.0005 #5e-4
+  # lr: 0.01
   # name: lbfgs
   # lr: 1
 
-epochs: 5000
+epochs: 10000
 
-checkpoint_epochs: 200
+checkpoint_epochs: 500
 
 in_velocity: 0.5
 out_pressure: 0.5
@@ -25,13 +25,18 @@ rho: 1.
 mu: 0.01
 
 domain1:
-  x_min: -0.5
-  y_min: -1
-  x_max: 1.5
-  y_max: 1
-
+  x_min: -20
+  y_min: -30
+  x_max: 40
+  y_max: 30
 
 domain2:
+  x_min: -1
+  y_min: -0.5
+  x_max: 2
+  y_max: 0.5
+
+domain3:
   x_min: -0.5
   y_min: -0.3
   x_max: 0.5
@@ -39,6 +44,7 @@ domain2:
 
 Nf1: 10000   # num of collocation points -> pde evaluation - domain 1
 Nf2: 10000   # num of collocation points -> pde evaluation - domain 2
+Nf3: 10000   # num of collocation points -> pde evaluation - domain 3
 Nb:  1000     # num of points to evaluate boundary conditions
 Ns:  1000     # num of points of the surface of the airfoil to evaluate boundary conditions
 Nin: 1000    # num of points inside the airfoil to evaluate boundary conditions

@@ -220,15 +220,15 @@ class AirfoilPINN(nn.Module):
   def closure(
       self, 
       optimizer: torch.optim.Optimizer, 
-      Nf1: int, Nf2: int, Nb: int, Ns: int, Nin: int,
-      domain1: utils.Domain2D, domain2: utils.Domain2D,
+      Nf1: int, Nf2: int, Nf3: int, Nb: int, Ns: int, Nin: int,
+      domain1: utils.Domain2D, domain2: utils.Domain2D, domain3: utils.Domain2D,
       mu: float, rho: float, 
       device: torch.device
   ) -> torch.Tensor:
 
     optimizer.zero_grad()
 
-    training_input = self.__generate_inputs(domain1=domain1, domain2=domain2, Nf1=Nf1, Nf2=Nf2, Nb=Nb, Ns=Ns, Nin=Nin, device=device)
+    training_input = self.__generate_inputs(domain1=domain1, domain2=domain2, domain3=domain3, Nf1=Nf1, Nf2=Nf2, Nf3=Nf3, Nb=Nb, Ns=Ns, Nin=Nin, device=device)
 
     total_loss, pde_ns_loss, bc_in_loss, bc_out_loss, bc_down_loss, bc_up_loss, surface_loss, interior_loss = self.loss(
                     *training_input,
@@ -253,8 +253,8 @@ class AirfoilPINN(nn.Module):
         self, 
         epochs: int, 
         optimizer: torch.optim.Optimizer, 
-        Nf1: int, Nf2: int, Nb: int, Ns: int, Nin: int,
-        domain1: utils.Domain2D, domain2: utils.Domain2D,
+        Nf1: int, Nf2: int, Nf3: int, Nb: int, Ns: int, Nin: int,
+        domain1: utils.Domain2D, domain2: utils.Domain2D, domain3: utils.Domain2D,
         mu: float, rho: float,
         device: torch.device,
         checkpoint_epochs: int,
@@ -264,7 +264,7 @@ class AirfoilPINN(nn.Module):
     print(self)
     print(f"Model name: {self.model_name}")
     print(f"Number of epochs: {epochs}")
-    print(f"Number of collocation points Nf: {Nf1 + Nf2}")
+    print(f"Number of collocation points Nf: {Nf1 + Nf2 + Nf3}")
     print(f"Number of boundary condition points Nb: {Nb}")
     print(f"Number of object surface points Ns: {Ns}")
     print(f"Number of interior object points Nin: {Nin}")
@@ -281,11 +281,12 @@ class AirfoilPINN(nn.Module):
 
     Nf1 = utils.nearest_power_of_2(Nf1)
     Nf2 = utils.nearest_power_of_2(Nf2)
+    Nf3 = utils.nearest_power_of_2(Nf3)
     Nb = utils.nearest_power_of_2(Nb)
     Ns = utils.nearest_power_of_2(Ns)
     Nin = utils.nearest_power_of_2(Nin)
 
-    print(f"Nf1: {Nf1}, Nf2: {Nf2}, Nb: {Nb}, Ns: {Ns}, Nin: {Nin}")
+    print(f"Nf1: {Nf1}, Nf2: {Nf2}, Nf3: {Nf3}, Nb: {Nb}, Ns: {Ns}, Nin: {Nin}")
     print("=======================================================")
     print("=> starting training...")
     print("=======================================================")
@@ -307,8 +308,8 @@ class AirfoilPINN(nn.Module):
         optimizer.step(lambda: 
                       self.closure(
                         optimizer=optimizer, 
-                        Nf1=Nf1, Nf2=Nf2, Nb=Nb, Ns=Ns, Nin=Nin,
-                        domain1=domain1, domain2=domain2,
+                        Nf1=Nf1, Nf2=Nf2, Nf3=Nf3, Nb=Nb, Ns=Ns, Nin=Nin,
+                        domain1=domain1, domain2=domain2, domain3=domain3,
                         mu=mu, rho=rho,
                         device=device))
 
@@ -363,8 +364,8 @@ class AirfoilPINN(nn.Module):
 
   def __generate_inputs(
         self, 
-        domain1: utils.Domain2D, domain2: utils.Domain2D,
-        Nf1: int, Nf2: int, Nb: int, Ns: int, Nin: int,
+        domain1: utils.Domain2D, domain2: utils.Domain2D, domain3: utils.Domain2D,
+        Nf1: int, Nf2: int, Nf3: int, Nb: int, Ns: int, Nin: int,
         device: torch.device) -> tuple:
     
     x_min, x_max, y_min, y_max = domain1.x_min, domain1.x_max, domain1.y_min, domain1.y_max
@@ -372,6 +373,7 @@ class AirfoilPINN(nn.Module):
     # collocation points
     samples_f1 = utils.qmc_sample_points_in_domain_2d(domain=domain1, num_samples=Nf1)
     samples_f2 = utils.qmc_sample_points_in_domain_2d(domain=domain2, num_samples=Nf2)
+    samples_f3 = utils.qmc_sample_points_in_domain_2d(domain=domain3, num_samples=Nf3)
 
     samples_f = np.concatenate((samples_f1, samples_f2), axis=1)
 
@@ -629,7 +631,7 @@ class AirfoilPINN(nn.Module):
     return _pinn
 
   @staticmethod
-  def load_from_checkpoint_for_training(checkpoint_dir: str, model_name: str, checkpoint_num: int, device: torch.device,lr=1) -> ('AirfoilPINN', torch.optim.Optimizer):
+  def load_from_checkpoint_for_training(checkpoint_dir: str, model_name: str, checkpoint_num: int, device: torch.device, activation_function, airfoil, domain, u_in, p_out, lr=1) -> ('AirfoilPINN', torch.optim.Optimizer):
 
     file_path = os.path.join(checkpoint_dir, model_name, str(checkpoint_num) + ".pt")
 
@@ -639,7 +641,7 @@ class AirfoilPINN(nn.Module):
 
       _hidden_units = checkpoint['hidden_units']
  
-      _pinn = AirfoilPINN(hidden_units=_hidden_units, model_name=model_name)
+      _pinn = AirfoilPINN(hidden_units=_hidden_units, model_name=model_name, activation_function=activation_function, airfoil=airfoil, domain=domain, u_in=u_in, p_out=p_out)
 
       _pinn.epoch = checkpoint['epoch']
       _pinn.logs = checkpoint['logs']
@@ -657,7 +659,7 @@ class AirfoilPINN(nn.Module):
       print("=> no checkpoint found at '{}'".format(file_path))
       return None
 
-    _pinn.eval()
+    # _pinn.eval()
 
     return _pinn, _optimizer
 
