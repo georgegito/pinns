@@ -1,12 +1,19 @@
-model_name: "StratosIntelligentCosmos135"
+model_name: "GustPreciseVoyager707"
 
-model_checkpoint_num: 1400
+model_checkpoint_num: 10400
 
-domain:
-  x_min: -0.5
-  y_min: -1
-  x_max: 1.5
-  y_max: 1
+domain1:
+  x_min: -20
+  y_min: -30
+  x_max: 40
+  y_max: 30
+
+domain2:
+  x_min: -5
+  y_min: -5
+  x_max: 5
+  y_max: 5
+
 
 Nx: 100
 Ny: 100
