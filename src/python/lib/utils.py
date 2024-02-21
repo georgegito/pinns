@@ -41,7 +41,7 @@ def stack_xy_tensors(x: torch.tensor, y: torch.tensor) -> torch.tensor:
   return torch.stack((x, y), axis=-1)
 
 def tensor_from_array(arr: np.ndarray, device: torch.device, requires_grad: bool) -> torch.tensor:
-  return torch.tensor(arr, device=device, requires_grad=requires_grad, dtype=torch.float32)
+  return torch.tensor(arr, device=device, requires_grad=requires_grad, dtype=torch.float64)
 
 
 def sample_points_in_domain(_min: float, _max: float, num_samples: int) -> np.ndarray:

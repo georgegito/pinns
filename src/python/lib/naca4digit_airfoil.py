@@ -24,6 +24,17 @@ class Naca4DigitAirfoil:
     self.y_min = self.yl.min()
     self.y_max = self.yu.max()
 
+
+  def get_coords(self) -> tuple:
+    """
+    Get the coordinates of the airfoil.
+
+    Returns:
+    - x, y: Coordinates of the airfoil.
+    """
+    return np.concatenate((self.xu, self.xl)), np.concatenate((self.yu, self.yl))
+
+
   def translate(self, dx: float, dy: float):
     """
     Translate the airfoil by a specified displacement.
