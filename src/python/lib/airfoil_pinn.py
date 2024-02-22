@@ -114,7 +114,8 @@ class AirfoilPINN(nn.Module):
       input_s: torch.Tensor,
       input_interior: torch.Tensor,
       training_data_xy: torch.Tensor,
-      training_data_p: torch.Tensor,
+      training_data_u: torch.Tensor,
+      training_data_v: torch.Tensor,
       mu: float, rho: float
   ) -> torch.Tensor:
 
@@ -214,8 +215,9 @@ class AirfoilPINN(nn.Module):
     interior_loss = self.mse(0, u_interior_pred) + self.mse(0, v_interior_pred)
 
     ## data loss
-    p_data_pred = output_data[:, 2]
-    data_loss = self.mse(p_data_pred, training_data_p)
+    u_data_pred = output_data[:, 0]
+    v_data_pred = output_data[:, 1]
+    data_loss = self.mse(training_data_u, u_data_pred) + self.mse(training_data_v, v_data_pred)
 
     # total loss
     total_loss =  self.lambda_pde_ns    * pde_ns_loss + \
@@ -236,7 +238,7 @@ class AirfoilPINN(nn.Module):
       self, 
       optimizer: torch.optim.Optimizer, 
       Nf1: int, Nf2: int, Nf3: int, Nf4: int, Nb: int, Ns: int, Nin: int,
-      training_data_xy: torch.Tensor, training_data_p: torch.Tensor,
+      training_data_xy: torch.Tensor, training_data_u: torch.Tensor, training_data_v: torch.Tensor,
       domain1: utils.Domain2D, domain2: utils.Domain2D, domain3: utils.Domain2D, domain4: utils.Domain2D,
       mu: float, rho: float, 
       device: torch.device
@@ -251,7 +253,8 @@ class AirfoilPINN(nn.Module):
     total_loss, pde_ns_loss, bc_in_loss, bc_out_loss, bc_down_loss, bc_up_loss, surface_loss, interior_loss, data_loss = self.loss(
                     *training_input, 
                     training_data_xy=training_data_xy, 
-                    training_data_p=training_data_p,
+                    training_data_u=training_data_u,
+                    training_data_v=training_data_v,
                     mu=mu, rho=rho)
 
     self.current_total_loss = total_loss.item()
@@ -317,7 +320,8 @@ class AirfoilPINN(nn.Module):
     training_data_xy = utils.stack_xy_tensors(
       utils.tensor_from_array(training_data['x'], device=device, requires_grad=False), 
       utils.tensor_from_array(training_data['y'], device=device, requires_grad=False)) 
-    training_data_p = utils.tensor_from_array(training_data['p'], device=device, requires_grad=False)
+    training_data_u = utils.tensor_from_array(training_data['u'], device=device, requires_grad=False)
+    training_data_v = utils.tensor_from_array(training_data['v'], device=device, requires_grad=False)
 
     training_clock = utils.Clock()
     training_clock.start()
@@ -336,7 +340,8 @@ class AirfoilPINN(nn.Module):
                       self.closure(
                         optimizer=optimizer, 
                         Nf1=Nf1, Nf2=Nf2, Nf3=Nf3, Nf4=Nf4, Nb=Nb, Ns=Ns, Nin=Nin,
-                        training_data_xy=training_data_xy, training_data_p=training_data_p,
+                        training_data_xy=training_data_xy, 
+                        training_data_u=training_data_u, training_data_v=training_data_v,
                         domain1=domain1, domain2=domain2, domain3=domain3, domain4=domain4,
                         mu=mu, rho=rho,
                         device=device))
