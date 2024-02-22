@@ -1,20 +1,22 @@
-hidden_units: [32, 32, 32, 32, 32, 32, 32, 32, 32, 32]
+# hidden_units: [32, 32, 32, 32, 32, 32, 32, 32, 32, 32]
+# hidden_units: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
 # hidden_units: [32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32]
-# hidden_units: [64, 64, 64, 64, 64, 64, 64, 64, 64, 64]
+hidden_units: [64, 64, 64, 64, 64, 64, 64, 64, 64, 64]
 
 activation_function: tanh
 # activation_function: sigmoid
+# activation_function: silu
 
 optimizer: 
   name: adam
   lr: 0.0005 #5e-4
-  # lr: 0.01
+  # lr: 0.001
   # name: lbfgs
   # lr: 1
 
 epochs: 10000
 
-checkpoint_epochs: 500
+checkpoint_epochs: 100
 
 in_velocity: 0.5
 out_pressure: 0.5
@@ -37,6 +39,12 @@ domain2:
   y_max: 0.5
 
 domain3:
+  x_min: -20
+  y_min: -2
+  x_max: 0.5
+  y_max: 2
+
+domain4:
   x_min: -0.5
   y_min: -0.3
   x_max: 0.5
@@ -45,6 +53,7 @@ domain3:
 Nf1: 10000   # num of collocation points -> pde evaluation - domain 1
 Nf2: 10000   # num of collocation points -> pde evaluation - domain 2
 Nf3: 10000   # num of collocation points -> pde evaluation - domain 3
+Nf4: 10000   # num of collocation points -> pde evaluation - domain 4
 Nb:  1000     # num of points to evaluate boundary conditions
 Ns:  1000     # num of points of the surface of the airfoil to evaluate boundary conditions
 Nin: 1000    # num of points inside the airfoil to evaluate boundary conditions
