@@ -103,10 +103,6 @@ class AirfoilPINN(nn.Module):
     return torch.mean(torch.square(y_true - y_pred))
 
 
-  def mape(self, y_true: torch.Tensor, y_pred: torch.Tensor, c: float) -> torch.Tensor:
-    return torch.mean(torch.abs((y_true - y_pred) / max(y_true, c))) * 100
-
-
   def loss(
       self, 
       x_f: torch.Tensor,
@@ -170,7 +166,7 @@ class AirfoilPINN(nn.Module):
     # f4 = p_xx + p_yy - rho * (u * u_x + v * u_y + u * v_x + v * v_y)
 
 
-    pde_ns_loss = self.mse(f1, 0) + self.mse(f2, 0) + self.mse(f3, 0)
+    pde_ns_loss = self.mse(0, f1) + self.mse(0, f2) + self.mse(0, f3)
 
     # pde_ps_loss = torch.mean(torch.square(f4))
 
@@ -179,25 +175,25 @@ class AirfoilPINN(nn.Module):
     u_b_in_pred = output_b_in[:, 0]
     v_b_in_pred = output_b_in[:, 1]
     u_b_in_true = torch.full_like(u_b_in_pred, self.u_in)
-    bc_in_loss_u = self.mse(u_b_in_pred, u_b_in_true)
-    bc_in_loss_v = self.mse(v_b_in_pred, 0)
+    bc_in_loss_u = self.mse(u_b_in_true, u_b_in_pred)
+    bc_in_loss_v = self.mse(0, v_b_in_pred)
 
     bc_in_loss = bc_in_loss_u + bc_in_loss_v
 
     ## Outlet: p = out_pressure for x = x_max
     p_b_out_pred = output_b_out[:, 2]
     p_b_out_true = torch.full_like(p_b_out_pred, self.p_out)
-    bc_out_loss_p = torch.mean(torch.square(p_b_out_pred - p_b_out_true))
+    bc_out_loss_p = self.mse(p_b_out_true, p_b_out_pred)
     bc_out_loss = bc_out_loss_p
 
     ## Down (Slip): v = 0 for y = y_min
     v_b_down_pred = output_b_down[:, 1]
-    bc_down_loss_v = self.mse(v_b_down_pred, 0)
+    bc_down_loss_v = self.mse(0, v_b_down_pred)
     bc_down_loss = bc_down_loss_v
 
     ## Up (Slip): v = 0 for y = y_max
     v_b_up_pred = output_b_up[:, 1]
-    bc_up_loss_v = self.mse(v_b_up_pred, 0)
+    bc_up_loss_v = self.mse(0, v_b_up_pred)
     bc_up_loss = bc_up_loss_v
 
     # Object surface boundary conditions loss
@@ -205,8 +201,8 @@ class AirfoilPINN(nn.Module):
     v_s_pred = output_s[:, 1]
 
     ## no-slip condition in surface
-    surface_loss_u = self.mse(u_s_pred, 0)
-    surface_loss_v = self.mse(v_s_pred, 0)
+    surface_loss_u = self.mse(0, u_s_pred)
+    surface_loss_v = self.mse(0, v_s_pred)
 
     surface_loss = surface_loss_u + surface_loss_v
 
@@ -215,7 +211,7 @@ class AirfoilPINN(nn.Module):
     v_interior_pred = output_interior[:, 1]
 
     ## no-slip condition inside the airfoil
-    interior_loss = self.mse(u_interior_pred, 0) + self.mse(v_interior_pred, 0)
+    interior_loss = self.mse(0, u_interior_pred) + self.mse(0, v_interior_pred)
 
     ## data loss
     p_data_pred = output_data[:, 2]
