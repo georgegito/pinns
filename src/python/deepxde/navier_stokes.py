@@ -54,13 +54,13 @@ class NavierStokesPDEs:
     return continuumx, continuumy, constitutive1, constitutive2, constitutive3, constitutive4
 
 
-  def getU(x, y):   
+  def getU(self, x, y):
     return dde.grad.jacobian(y, x, i = 0, j = 1) 
 
-  def getV(x, y): 
+  def getV(self, x, y):
     return - dde.grad.jacobian(y, x, i = 0, j = 0)  
 
-  def getP(x, y):
+  def getP(sefl, x, y):
     return y[:, 1:2]
 
 
