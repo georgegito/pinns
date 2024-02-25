@@ -55,7 +55,7 @@ class NavierStokesPDEs:
 
 
   def getU(x, y):   
-  return dde.grad.jacobian(y, x, i = 0, j = 1) 
+    return dde.grad.jacobian(y, x, i = 0, j = 1) 
 
   def getV(x, y): 
     return - dde.grad.jacobian(y, x, i = 0, j = 0)  
