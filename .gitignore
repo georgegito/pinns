@@ -6,3 +6,4 @@
 **/models/archive/*
 *.pt
 *.env
+**/deepxde/out/*

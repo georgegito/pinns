@@ -55,19 +55,19 @@ class Naca4DigitAirfoil:
     yc = np.zeros(np.size(xv))
     
     for i in range(n+1):
-        if xv[i] <= p * c:
-            yc[i] = c * (m / p**2 * (xv[i] / c) * (2 * p - (xv[i] / c)))
-        else:
-            yc[i] = c * (m / (1 - p)**2 * (1 + (2 * p - (xv[i] / c)) * (xv[i] / c) - 2 * p))
+      if xv[i] <= p * c:
+        yc[i] = c * (m / p**2 * (xv[i] / c) * (2 * p - (xv[i] / c)))
+      else:
+        yc[i] = c * (m / (1 - p)**2 * (1 + (2 * p - (xv[i] / c)) * (xv[i] / c) - 2 * p))
     
     # Camber line slope
     dyc = np.zeros(np.size(xv))
     
     for i in range(n+1):
-        if xv[i] <= p * c:
-            dyc[i] = m / p**2 * 2 * (p - xv[i] / c)
-        else:
-            dyc[i] = m / (1 - p)**2 * 2 * (p - xv[i] / c)
+      if xv[i] <= p * c:
+        dyc[i] = m / p**2 * 2 * (p - xv[i] / c)
+      else:
+        dyc[i] = m / (1 - p)**2 * 2 * (p - xv[i] / c)
             
     # Boundary coordinates and sorting        
     th = np.arctan2(dyc, 1)
@@ -80,8 +80,8 @@ class Naca4DigitAirfoil:
     y = np.zeros(2 * n + 1)
     
     for i in range(n):
-        x[i] = xL[n - i]
-        y[i] = yL[n - i]
+      x[i] = xL[n - i]
+      y[i] = yL[n - i]
         
     x[n : 2 * n + 1] = xU
     y[n : 2 * n + 1] = yU
@@ -95,6 +95,6 @@ class Naca4DigitAirfoil:
 
     ## Apply rotation
     for i in range(len(x)):
-        [x[i], y[i]] = R @ np.array([x[i], y[i]])
+      [x[i], y[i]] = R @ np.array([x[i], y[i]])
 
     return np.vstack((x + offset_x, y + offset_y)).T
