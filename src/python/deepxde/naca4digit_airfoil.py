@@ -1,5 +1,5 @@
 import numpy as np
-
+import matplotlib.pyplot as plt
 
 class Naca4DigitAirfoil:
 
@@ -98,3 +98,18 @@ class Naca4DigitAirfoil:
       [x[i], y[i]] = R @ np.array([x[i], y[i]])
 
     return np.vstack((x + offset_x, y + offset_y)).T
+  
+  
+  def plot(self, ax=None):
+    if ax is None:
+      fig, ax = plt.subplots()
+
+    points = self.get_boundary_points(1000)
+
+    ax.fill(points[:, 0], points[:, 1], 'skyblue', label='Airfoil')
+    ax.axis('equal')
+    ax.legend()
+    ax.grid(True)
+
+    if ax is None:
+      plt.show()

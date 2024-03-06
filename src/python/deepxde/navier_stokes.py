@@ -5,8 +5,8 @@ class NavierStokesPDEs:
 
   def __init__(self, rho: float, mu: float,
                xmin: float, xmax: float, ymin: float, ymax: float,
-               u_farfield: float, v_farfield: float, p_farfield: float,
-               airfoil_geom: dde.geometry.Polygon, geom: dde.geometry.Rectangle):
+               airfoil_geom: dde.geometry.Polygon, geom: dde.geometry.Rectangle,
+               u_farfield: float, v_farfield: float, p_farfield: float = None):
     """
     - rho: Density.
     - mu: Dynamic viscosity.
@@ -103,9 +103,11 @@ class NavierStokesPDEs:
     bc_top_bottom_u = dde.OperatorBC(self.geom, self.__fun_u_farfield, self.__boundary_farfield_top_bottom)
     bc_top_bottom_v = dde.OperatorBC(self.geom, self.__fun_v_farfield, self.__boundary_farfield_top_bottom)
 
-    bc_outlet_p = dde.DirichletBC(self.geom, self.__funP, self.__boundary_farfield_outlet, component = 1)
-
     bc_airfoil_u = dde.OperatorBC(self.geom, self.__fun_no_slip_u, self.__boundary_airfoil)
     bc_airfoil_v = dde.OperatorBC(self.geom, self.__fun_no_slip_v, self.__boundary_airfoil)
 
-    return [bc_inlet_u, bc_inlet_v, bc_top_bottom_u, bc_top_bottom_v, bc_outlet_p, bc_airfoil_u, bc_airfoil_v]
+    if self.p_farfield is not None:
+      bc_outlet_p = dde.DirichletBC(self.geom, self.__funP, self.__boundary_farfield_outlet, component = 1)
+      return [bc_inlet_u, bc_inlet_v, bc_top_bottom_u, bc_top_bottom_v, bc_outlet_p, bc_airfoil_u, bc_airfoil_v]
+    else:
+      return [bc_inlet_u, bc_inlet_v, bc_top_bottom_u, bc_top_bottom_v, bc_airfoil_u, bc_airfoil_v]
