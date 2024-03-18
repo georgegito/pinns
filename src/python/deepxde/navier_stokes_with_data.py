@@ -1,6 +1,7 @@
 import deepxde as dde
 import numpy as np
 import pandas as pd
+import tensorflow as tf
 
 class NavierStokesPDEs:
 
@@ -55,14 +56,63 @@ class NavierStokesPDEs:
     return continuumx, continuumy, constitutive1, constitutive2, constitutive3, constitutive4
 
 
+  def get_pdes2(self, x, y):
+    """
+    System of PDEs to be minimized: incompressible Navier-Stokes equation in the
+    continuum-mechanics based formulations.
+    """
+    rho, mu = self.rho, self.mu
+
+    # psi, p = y[:, 0:1], y[:, 1:2]
+    u, v , p = y[:, 0:1], y[:, 1:2], y[:, 2:3]
+    
+    # u =   dde.grad.jacobian(y, x, i = 0, j = 1)
+    # v = - dde.grad.jacobian(y, x, i = 0, j = 0)
+    
+    u_x = dde.grad.jacobian(u, x, i = 0, j = 0)
+    u_y = dde.grad.jacobian(u, x, i = 0, j = 1)
+    
+    v_x = dde.grad.jacobian(v, x, i = 0, j = 0)
+    v_y = dde.grad.jacobian(v, x, i = 0, j = 1)
+
+    # u_xx = dde.grad.jacobian(u_x, x, i = 0, j = 0)
+    # u_yy = dde.grad.jacobian(u_y, x, i = 0, j = 1)
+    
+    u_xx = dde.grad.hessian(u, x, component=0, i = 0, j = 0)
+    u_yy = dde.grad.hessian(u, x, component=0, i = 0, j = 1)
+
+    # v_xx = dde.grad.jacobian(v_x, x, i = 0, j = 0)
+    # v_yy = dde.grad.jacobian(v_y, x, i = 0, j = 1)
+    
+    v_xx = dde.grad.hessian(v, x, component=0, i = 0, j = 0)
+    v_yy = dde.grad.hessian(v, x, component=0, i = 0, j = 1)
+
+    p_x = dde.grad.jacobian(p, x, i = 0, j = 0)
+    p_y = dde.grad.jacobian(p, x, i = 0, j = 1)
+
+    # x momentum
+    f1 = rho * (u * u_x + v * u_y) + p_x - mu * (u_xx + u_yy)
+    
+    # y momentum
+    f2 = rho * (u * v_x + v * v_y) + p_y - mu * (v_xx + v_yy)
+
+    # continuity
+    # f3 = u_x + v_y # satisfies automatically
+
+    return f1, f2
+
+
   def getU(self, x, y):
-    return dde.grad.jacobian(y, x, i = 0, j = 1) 
+    # return dde.grad.jacobian(y, x, i = 0, j = 1) 
+    return y[:, 0:1] 
 
   def getV(self, x, y):
-    return - dde.grad.jacobian(y, x, i = 0, j = 0)  
+    # return - dde.grad.jacobian(y, x, i = 0, j = 0)  
+    return y[:, 1:2] 
 
   def getP(sefl, x, y):
-    return y[:, 1:2]
+    # return y[:, 1:2]
+    return y[:, 2:3]
 
   def __boundary_airfoil(self, x, on_boundary):
     return on_boundary and self.airfoil_geom.on_boundary(np.array([x]))[0]
