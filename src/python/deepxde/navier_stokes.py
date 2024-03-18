@@ -95,16 +95,16 @@ class NavierStokesPDEs:
 
   # Boundary values definition
   def __fun_u_inlet(self, x, y, _):
-    return self.getU - self.u_inlet
+    return self.getU(x, y) - self.u_inlet
 
   def __fun_v_farfield(self, x, y, _):
-    return self.getV - self.v_farfield
+    return self.getV(x, y) - self.v_farfield
 
   def __fun_no_slip_u(self, x, y, _):
-    return self.getU
+    return self.getU(x, y)
 
   def __fun_no_slip_v(self, x, y, _):
-    return self.getV
+    return self.getV(x, y)
 
 
   # Boundary conditions assembly
