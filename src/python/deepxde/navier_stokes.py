@@ -6,35 +6,38 @@ class NavierStokesPDEs:
   def __init__(self, rho: float, mu: float,
                xmin: float, xmax: float, ymin: float, ymax: float,
                airfoil_geom: dde.geometry.Polygon, geom: dde.geometry.Rectangle,
-               u_inlet: float, v_farfield: float):
+               u_inlet: float = None, v_farfield: float = None,
+               x_data: np.ndarray = None, y_data: np.ndarray = None, u_data: np.ndarray = None, v_data: np.ndarray = None, p_data: np.ndarray = None):
     """
     - rho: Density.
     - mu: Dynamic viscosity.
     - xmin, xmax, ymin, ymax: Domain limits.
     - airfoil_geom: Airfoil geometry.
     - u_inlet, v_farfield: Farfield boundary conditions.
-    """
-    self.rho, self.mu = rho, mu
-    self.xmin, self.xmax, self.ymin, self.ymax = xmin, xmax, ymin, ymax
-    self.u_inlet, self.v_farfield = u_inlet, v_farfield
-    self.airfoil_geom, self.geom = airfoil_geom, geom
-
-
-  def __init__(self, rho: float, mu: float,
-               xmin: float, xmax: float, ymin: float, ymax: float,
-               airfoil_geom: dde.geometry.Polygon, geom: dde.geometry.Rectangle,
-               x_data: np.ndarray, y_data: np.ndarray, u_data: np.ndarray, v_data: np.ndarray, p_data: np.ndarray):
-    """
-    - rho: Density.
-    - mu: Dynamic viscosity.
-    - xmin, xmax, ymin, ymax: Domain limits.
-    - airfoil_geom: Airfoil geometry.
     - x_data, y_data, u_data, v_data, p_data: Data points.
     """
     self.rho, self.mu = rho, mu
     self.xmin, self.xmax, self.ymin, self.ymax = xmin, xmax, ymin, ymax
+    self.u_inlet, self.v_farfield = u_inlet, v_farfield
     self.x_data, self.y_data, self.u_data, self.v_data, self.p_data = x_data, y_data, u_data, v_data, p_data
     self.airfoil_geom, self.geom = airfoil_geom, geom
+
+
+  # def __init__(self, rho: float, mu: float,
+  #              xmin: float, xmax: float, ymin: float, ymax: float,
+  #              airfoil_geom: dde.geometry.Polygon, geom: dde.geometry.Rectangle,
+  #              x_data: np.ndarray, y_data: np.ndarray, u_data: np.ndarray, v_data: np.ndarray, p_data: np.ndarray):
+  #   """
+  #   - rho: Density.
+  #   - mu: Dynamic viscosity.
+  #   - xmin, xmax, ymin, ymax: Domain limits.
+  #   - airfoil_geom: Airfoil geometry.
+  #   - x_data, y_data, u_data, v_data, p_data: Data points.
+  #   """
+  #   self.rho, self.mu = rho, mu
+  #   self.xmin, self.xmax, self.ymin, self.ymax = xmin, xmax, ymin, ymax
+  #   self.x_data, self.y_data, self.u_data, self.v_data, self.p_data = x_data, y_data, u_data, v_data, p_data
+  #   self.airfoil_geom, self.geom = airfoil_geom, geom
 
 
   def get_pdes(self, x, y):
