@@ -141,6 +141,7 @@ class NavierStokesPDEs:
 
     bc_u_data = dde.PointSetOperatorBC(np.array([self.x_data, self.y_data]).T, np.array(self.u_data).reshape(-1, 1), self.__fun_u_)
     bc_v_data = dde.PointSetOperatorBC(np.array([self.x_data, self.y_data]).T, np.array(self.v_data).reshape(-1, 1), self.__fun_v_)
-    bc_p_data = dde.PointSetOperatorBC(np.array([self.x_data, self.y_data]).T, np.array(self.p_data).reshape(-1, 1), self.__fun_p_)
+    # bc_p_data = dde.PointSetOperatorBC(np.array([self.x_data, self.y_data]).T, np.array(self.p_data).reshape(-1, 1), self.__fun_p_)
 
-    return [bc_u_data, bc_v_data, bc_p_data, bc_airfoil_u, bc_airfoil_v]
+    # return [bc_u_data, bc_v_data, bc_p_data, bc_airfoil_u, bc_airfoil_v]
+    return [bc_u_data, bc_v_data, bc_airfoil_u, bc_airfoil_v]
